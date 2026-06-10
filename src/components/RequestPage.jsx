@@ -405,140 +405,161 @@ export default function RequestPage() {
               ) : (
                 /* CHECKOUT FORM & ITEMS */
                 <>
-                  <div className="cart-items-section">
-                    <h4 style={{ color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
-                      已選擇器材 ({cart.length} 款)
-                    </h4>
-                    
-                    {cart.length === 0 ? (
-                      <div className="empty-state" style={{ padding: '2rem 1rem', fontSize: '0.9rem' }}>
-                        <ShoppingCart size={32} />
-                        <p>租借車目前是空的</p>
-                        <span className="helper-text">請先將器材「加入租借車」</span>
-                      </div>
-                    ) : (
-                      cart.map(item => (
-                        <div key={item.id} className="cart-item-row">
-                          <img
-                            className="cart-item-thumb"
-                            src={item.image_url}
-                            alt=""
-                            onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=100'; }}
-                          />
-                          <div className="cart-item-info">
-                            <div className="cart-item-name">{item.name}</div>
-                            <div className="cart-item-desc">
-                              廠牌: {item.brand || 'N/A'} | 型號: {item.model || 'N/A'}
-                            </div>
-                            <div className="cart-item-controls">
-                              <button className="cart-qty-btn" onClick={() => updateCartQty(item.id, -1)}>
-                                <Minus size={12} />
-                              </button>
-                              <span className="cart-qty-val">{item.quantity}</span>
-                              <button className="cart-qty-btn" onClick={() => updateCartQty(item.id, 1)}>
-                                <Plus size={12} />
-                              </button>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.25rem' }}>
-                                (庫存剩餘: {item.maxAvailable})
-                              </span>
-                            </div>
+                  {cart.length === 0 ? (
+                    <div className="empty-state" style={{ padding: '4rem 1rem', fontSize: '0.9rem' }}>
+                      <ShoppingCart size={48} />
+                      <p>租借車目前是空的</p>
+                      <span className="helper-text">請先將器材「加入租借車」</span>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleCheckoutSubmit}>
+                      {/* 1. Applicant Info Form (ON TOP) */}
+                      <div className="applicant-info-section" style={{ marginBottom: '2rem' }}>
+                        <h4 style={{ color: 'var(--text-primary)', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+                          申請人基本資料
+                        </h4>
+                        
+                        <div className="form-grid" style={{ gridTemplateColumns: '1fr', gap: '1rem' }}>
+                          <div className="form-group">
+                            <label>姓名 *</label>
+                            <input
+                              type="text"
+                              className="input-field"
+                              placeholder="請輸入姓名"
+                              value={form.name}
+                              onChange={(e) => setForm({ ...form, name: e.target.value })}
+                              required
+                            />
+                            {errors.name && <span className="error-text">{errors.name}</span>}
                           </div>
-                          <button className="cart-remove-btn" onClick={() => removeFromCart(item.id)} title="移除器材">
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      ))
-                    )}
-                  </div>
 
-                  {cart.length > 0 && (
-                    <form onSubmit={handleCheckoutSubmit} style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
-                      <h4 style={{ color: '#fff', marginBottom: '1rem' }}>申請人基本資料</h4>
-                      
-                      <div className="form-grid" style={{ gridTemplateColumns: '1fr' }}>
-                        <div className="form-group">
-                          <label>姓名 *</label>
-                          <input
-                            type="text"
-                            className="input-field"
-                            placeholder="請輸入姓名"
-                            value={form.name}
-                            onChange={(e) => setForm({ ...form, name: e.target.value })}
-                            required
-                          />
-                          {errors.name && <span className="error-text">{errors.name}</span>}
-                        </div>
+                          <div className="form-group">
+                            <label>手機電話 *</label>
+                            <input
+                              type="text"
+                              className="input-field"
+                              placeholder="例如: 0912345678"
+                              value={form.phone}
+                              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                              required
+                            />
+                            {errors.phone && <span className="error-text">{errors.phone}</span>}
+                          </div>
 
-                        <div className="form-group">
-                          <label>手機電話 *</label>
-                          <input
-                            type="text"
-                            className="input-field"
-                            placeholder="例如: 0912345678"
-                            value={form.phone}
-                            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                            required
-                          />
-                          {errors.phone && <span className="error-text">{errors.phone}</span>}
-                        </div>
+                          <div className="form-group">
+                            <label>員工編號 *</label>
+                            <input
+                              type="text"
+                              className="input-field"
+                              placeholder="請輸入員工編號"
+                              value={form.empId}
+                              onChange={(e) => setForm({ ...form, empId: e.target.value })}
+                              required
+                            />
+                            {errors.empId && <span className="error-text">{errors.empId}</span>}
+                          </div>
 
-                        <div className="form-group">
-                          <label>員工編號 *</label>
-                          <input
-                            type="text"
-                            className="input-field"
-                            placeholder="請輸入員工編號"
-                            value={form.empId}
-                            onChange={(e) => setForm({ ...form, empId: e.target.value })}
-                            required
-                          />
-                          {errors.empId && <span className="error-text">{errors.empId}</span>}
-                        </div>
+                          <div className="form-group">
+                            <label>申請單位 *</label>
+                            <input
+                              type="text"
+                              className="input-field"
+                              placeholder="例如: 急診醫學部"
+                              value={form.dept}
+                              onChange={(e) => setForm({ ...form, dept: e.target.value })}
+                              required
+                            />
+                            {errors.dept && <span className="error-text">{errors.dept}</span>}
+                          </div>
 
-                        <div className="form-group">
-                          <label>申請單位 *</label>
-                          <input
-                            type="text"
-                            className="input-field"
-                            placeholder="例如: 急診醫學部"
-                            value={form.dept}
-                            onChange={(e) => setForm({ ...form, dept: e.target.value })}
-                            required
-                          />
-                          {errors.dept && <span className="error-text">{errors.dept}</span>}
-                        </div>
+                          <div className="form-group">
+                            <label>電子信箱 *</label>
+                            <input
+                              type="email"
+                              className="input-field"
+                              placeholder="例如: applicant@hospital.org.tw"
+                              value={form.email}
+                              onChange={(e) => setForm({ ...form, email: e.target.value })}
+                              required
+                            />
+                            {errors.email && <span className="error-text">{errors.email}</span>}
+                          </div>
 
-                        <div className="form-group">
-                          <label>電子信箱 *</label>
-                          <input
-                            type="email"
-                            className="input-field"
-                            placeholder="例如: applicant@hospital.org.tw"
-                            value={form.email}
-                            onChange={(e) => setForm({ ...form, email: e.target.value })}
-                            required
-                          />
-                          {errors.email && <span className="error-text">{errors.email}</span>}
-                        </div>
-
-                        <div className="form-group">
-                          <label>需求日期 * (需大於三個工作天)</label>
-                          <input
-                            type="date"
-                            className="input-field"
-                            min={getMinSelectableDate()}
-                            value={form.requiredDate}
-                            onChange={(e) => setForm({ ...form, requiredDate: e.target.value })}
-                            required
-                          />
-                          <span className="helper-text" style={{ fontSize: '0.75rem' }}>
-                            排除今天起算 3 個工作天（六日不計）。最早可預約日期：{getMinSelectableDate()}
-                          </span>
-                          {errors.requiredDate && <span className="error-text">{errors.requiredDate}</span>}
+                          <div className="form-group" style={{ marginBottom: '0.5rem' }}>
+                            <label>需求日期 * (需大於三個工作天)</label>
+                            <input
+                              type="date"
+                              className="input-field"
+                              min={getMinSelectableDate()}
+                              value={form.requiredDate}
+                              onChange={(e) => setForm({ ...form, requiredDate: e.target.value })}
+                              required
+                            />
+                            <span className="helper-text" style={{ fontSize: '0.75rem' }}>
+                              排除今天起算 3 個工作天（六日不計）。最早可預約日期：{getMinSelectableDate()}
+                            </span>
+                            {errors.requiredDate && <span className="error-text">{errors.requiredDate}</span>}
+                          </div>
                         </div>
                       </div>
 
-                      <button type="submit" className="btn-primary" disabled={submitting} style={{ marginTop: '1.5rem' }}>
+                      {/* 2. Cart Items List (AT THE BOTTOM) */}
+                      <div className="cart-items-section" style={{ marginBottom: '2rem' }}>
+                        <h4 style={{ color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
+                          已選擇器材 ({cart.length} 款)
+                        </h4>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                          {cart.map(item => (
+                            <div key={item.id} className="cart-item-row">
+                              <img
+                                className="cart-item-thumb"
+                                src={item.image_url}
+                                alt=""
+                                onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=100'; }}
+                              />
+                              <div className="cart-item-info">
+                                <div className="cart-item-name">{item.name}</div>
+                                <div className="cart-item-desc">
+                                  廠牌: {item.brand || 'N/A'} | 型號: {item.model || 'N/A'}
+                                </div>
+                                <div className="cart-item-controls" style={{ marginTop: '0.5rem' }}>
+                                  <span className="cart-qty-val" style={{ marginRight: '0.5rem', fontSize: '0.85rem' }}>
+                                    申請數量: {item.quantity}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="cart-qty-btn"
+                                    onClick={() => updateCartQty(item.id, 1)}
+                                    title="增加數量"
+                                  >
+                                    <Plus size={12} />
+                                  </button>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.25rem' }}>
+                                    (庫存剩餘: {item.maxAvailable})
+                                  </span>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                className="cart-remove-btn"
+                                onClick={() => removeFromCart(item.id)}
+                                title="移除此項目"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 3. Batch Submit Button */}
+                      <button
+                        type="submit"
+                        className="btn-primary"
+                        disabled={submitting}
+                        style={{ marginTop: '1rem' }}
+                      >
                         {submitting ? '提交申請中...' : `確認並一次送出 (${cart.length} 項器材)`}
                       </button>
                     </form>
