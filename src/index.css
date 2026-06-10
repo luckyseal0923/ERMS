@@ -697,6 +697,11 @@ label {
   color: var(--danger);
 }
 
+.kanban-badge-partial {
+  background: rgba(139, 92, 246, 0.1);
+  color: #8b5cf6;
+}
+
 /* Admin Panel Table */
 .admin-layout {
   display: flex;

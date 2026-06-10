@@ -119,6 +119,54 @@ export default function AdminPanel() {
   const [rejectingRequest, setRejectingRequest] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
 
+  // Return modal state & checklist state
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
+  const [returningGroup, setReturningGroup] = useState(null);
+  const [checkedItems, setCheckedItems] = useState({});
+
+  const handleOpenReturnModal = (group) => {
+    setReturningGroup(group);
+    const initialChecked = {};
+    group.items.forEach(item => {
+      initialChecked[item.id] = item.status === 'returned';
+    });
+    setCheckedItems(initialChecked);
+    setReturnModalOpen(true);
+  };
+
+  const handleReturnSubmit = async (e) => {
+    e.preventDefault();
+    const itemsToUpdate = returningGroup.items.filter(item => item.status !== 'returned' && checkedItems[item.id]);
+    
+    if (itemsToUpdate.length === 0) {
+      alert('請勾選要辦理歸還的器材。');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const itemIds = itemsToUpdate.map(item => item.id);
+      const { error } = await supabase
+        .from('borrow_requests')
+        .update({
+          status: 'returned',
+          returned_at: new Date().toISOString()
+        })
+        .in('id', itemIds);
+        
+      if (error) throw error;
+      setReturnModalOpen(false);
+      setReturningGroup(null);
+      setCheckedItems({});
+      await fetchAdminData();
+    } catch (err) {
+      console.error('Error handling return:', err);
+      alert('辦理歸還失敗。');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -274,24 +322,7 @@ export default function AdminPanel() {
     }
   };
 
-  const handleReturnRequest = async (group) => {
-    try {
-      const { error } = await supabase
-        .from('borrow_requests')
-        .update({
-          status: 'returned',
-          returned_at: new Date().toISOString()
-        })
-        .in('id', group.items.map(item => item.id));
-
-      if (error) throw error;
-      await fetchAdminData();
-    } catch (err) {
-      console.error('Error returning request:', err);
-      alert('辦理歸還失敗。');
-    }
-  };
-
+  // Group-based return handler is replaced by handleOpenReturnModal & handleReturnSubmit
   // Open Re-authentication modal for Taking Down/Deleting
   const handleOpenReAuthModal = (item) => {
     setReAuthItem(item);
@@ -656,6 +687,7 @@ export default function AdminPanel() {
                 <th>申請單位</th>
                 <th>手機及信箱</th>
                 <th>預借器材清單</th>
+                <th>預約借用日期</th>
                 <th>申請狀態</th>
                 <th>審核操作</th>
               </tr>
@@ -663,7 +695,7 @@ export default function AdminPanel() {
             <tbody>
               {requests.length === 0 ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>暫無租借申請紀錄</td>
+                  <td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>暫無租借申請紀錄</td>
                 </tr>
               ) : (
                 groupRequests(requests).map(req => {
@@ -694,27 +726,36 @@ export default function AdminPanel() {
                               padding: '0.4rem 0', 
                               borderBottom: idx < req.items.length - 1 ? '1px dashed var(--border-color)' : 'none' 
                             }}>
-                              <div style={{ fontWeight: 600 }}>{aid ? aid.name : '未知器材'}</div>
+                              <div style={{ fontWeight: 600 }}>
+                                {aid ? aid.name : '未知器材'} &nbsp; X &nbsp; 數量：{item.quantity} {aid ? aid.unit : '具'}
+                                {item.status === 'returned' && (
+                                  <span className="kanban-card-badge kanban-badge-returned" style={{ marginLeft: '0.5rem', fontSize: '0.7rem', verticalAlign: 'middle', padding: '1px 4px' }}>
+                                    已還
+                                  </span>
+                                )}
+                              </div>
                               {aid && (aid.brand || aid.model) && (
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
                                   {aid.brand && `廠牌: ${aid.brand}`} {aid.model && ` | 型號: ${aid.model}`}
                                 </div>
                               )}
-                              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                                數量：<strong>{item.quantity}</strong> {aid ? aid.unit : '具'} | 預用日期：<strong>{item.required_date}</strong>
-                              </div>
                             </div>
                           );
                         })}
                       </td>
                       <td>
+                        <strong>{req.required_date}</strong>
+                      </td>
+                      <td>
                         <span className={`kanban-card-badge ${
                           req.status === 'pending' ? 'kanban-badge-pending' :
                           req.status === 'approved' ? 'kanban-badge-approved' :
+                          req.status === 'partially_returned' ? 'kanban-badge-partial' :
                           req.status === 'returned' ? 'kanban-badge-returned' : 'kanban-badge-rejected'
                         }`}>
                           {req.status === 'pending' ? '待審核' :
                            req.status === 'approved' ? '租借中' :
+                           req.status === 'partially_returned' ? '部分歸還' :
                            req.status === 'returned' ? '已歸還' : '已拒絕'}
                         </span>
                       </td>
@@ -736,17 +777,17 @@ export default function AdminPanel() {
                               </button>
                             </>
                           )}
-                          {req.status === 'approved' && (
+                          {(req.status === 'approved' || req.status === 'partially_returned') && (
                             <button
                               className="btn-small return"
-                              onClick={() => handleReturnRequest(req)}
+                              onClick={() => handleOpenReturnModal(req)}
                             >
                               <Undo2 size={14} /> 確認歸還
                             </button>
                           )}
                           {req.status === 'returned' && (
                             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                              歸還於 {new Date(req.returned_at).toLocaleDateString('zh-TW')}
+                              已全數歸還
                             </span>
                           )}
                           {req.status === 'rejected' && (
@@ -1097,6 +1138,92 @@ export default function AdminPanel() {
                 <button type="submit" className="btn-primary" style={{ background: 'var(--danger)' }}>
                   確認拒絕申請
                 </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Return checklist modal */}
+      {returnModalOpen && returningGroup && (
+        <div className="modal-overlay">
+          <div className="modal-card" style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h3>辦理器材歸還</h3>
+              <button className="modal-close" onClick={() => setReturnModalOpen(false)}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <form onSubmit={handleReturnSubmit}>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+                  案件編號：<strong style={{ fontFamily: 'monospace', color: 'var(--primary)' }}>{formatCaseNumber(returningGroup.id, returningGroup.created_at)}</strong><br />
+                  借用人：<strong>{returningGroup.applicant_name}</strong><br />
+                  說明：請勾選本次歸還的器材。全部勾選後狀態為<strong>已歸還</strong>；未全部勾選則設為<strong>部分歸還</strong>。
+                </p>
+                
+                <div style={{ 
+                  margin: '1rem 0 1.5rem', 
+                  maxHeight: '200px', 
+                  overflowY: 'auto', 
+                  background: 'var(--bg-secondary)', 
+                  padding: '1rem', 
+                  borderRadius: 'var(--radius-sm)', 
+                  border: '1px solid var(--border-color)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.75rem'
+                }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.4rem' }}>
+                    預借器材清單 (勾選欲歸還之品項)
+                  </div>
+                  {returningGroup.items.map(item => {
+                    const aid = resources.find(r => r.id === item.resource_id);
+                    const isAlreadyReturned = item.status === 'returned';
+                    return (
+                      <label key={item.id} style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '0.6rem', 
+                        cursor: isAlreadyReturned ? 'not-allowed' : 'pointer', 
+                        opacity: isAlreadyReturned ? 0.65 : 1,
+                        fontSize: '0.9rem',
+                        userSelect: 'none'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={!!checkedItems[item.id]}
+                          disabled={isAlreadyReturned}
+                          onChange={(e) => {
+                            setCheckedItems(prev => ({
+                              ...prev,
+                              [item.id]: e.target.checked
+                            }));
+                          }}
+                          style={{ width: '16px', height: '16px', cursor: isAlreadyReturned ? 'not-allowed' : 'pointer' }}
+                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span style={{ fontWeight: 600 }}>{aid ? aid.name : '未知器材'}</span>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            X 數量：{item.quantity} {aid ? aid.unit : '具'}
+                          </span>
+                          {isAlreadyReturned && (
+                            <span className="kanban-card-badge kanban-badge-returned" style={{ fontSize: '0.75rem', padding: '1px 4px' }}>
+                              已歸還
+                            </span>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+                  <button type="button" className="btn-secondary" onClick={() => setReturnModalOpen(false)}>
+                    取消
+                  </button>
+                  <button type="submit" className="btn-primary" style={{ background: 'var(--success)' }}>
+                    確認歸還變更
+                  </button>
+                </div>
               </form>
             </div>
           </div>
