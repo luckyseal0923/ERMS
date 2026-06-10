@@ -831,7 +831,7 @@ export default function AdminPanel() {
         <div>
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <ShieldCheck style={{ color: 'var(--success)' }} />
-            後台管理系統
+            教學資源管理系統 ─ 後台管理
           </h1>
           <p className="subtitle" style={{ marginBottom: 0 }}>
             目前登入者：{session.name} ({session.email}) ─ 權限：{session.role === 'system' ? '系統管理員' : '一般管理者'}
