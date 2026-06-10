@@ -454,7 +454,7 @@ export default function RequestPage() {
                   <div style={{ margin: '1.5rem 0', padding: '1rem', background: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px dashed var(--border-color)', width: '100%' }}>
                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>您的案件申請編號：</span>
                     <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary)', marginTop: '0.4rem', letterSpacing: '0.05em', fontFamily: 'monospace' }}>
-                      {submittedIds.map(id => formatCaseNumber(id)).join(', ')}
+                      {submittedIds.length > 0 ? formatCaseNumber(Math.min(...submittedIds)) : ''}
                     </div>
                   </div>
 

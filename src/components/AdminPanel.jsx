@@ -29,6 +29,38 @@ const formatDateTime = (dateStr) => {
   return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
 };
 
+// Group borrow requests by applicant email, phone, and creation time (or emp_id + created_at)
+const groupRequests = (reqs) => {
+  const groups = {};
+  reqs.forEach(req => {
+    // We group by applicant_emp_id and created_at timestamp
+    const key = `${req.applicant_emp_id}_${req.created_at}`;
+    if (!groups[key]) {
+      groups[key] = {
+        id: req.id, // Using first ID as reference
+        applicant_name: req.applicant_name,
+        applicant_phone: req.applicant_phone,
+        applicant_emp_id: req.applicant_emp_id,
+        applicant_dept: req.applicant_dept,
+        applicant_email: req.applicant_email,
+        created_at: req.created_at,
+        required_date: req.required_date,
+        status: req.status,
+        reject_reason: req.reject_reason,
+        returned_at: req.returned_at,
+        approved_at: req.approved_at,
+        items: []
+      };
+    }
+    // Track min ID for consistent case number generation
+    if (req.id < groups[key].id) {
+      groups[key].id = req.id;
+    }
+    groups[key].items.push(req);
+  });
+  return Object.values(groups);
+};
+
 export default function AdminPanel() {
   const [session, setSession] = useState(null);
   const [isRegister, setIsRegister] = useState(false);
@@ -195,8 +227,8 @@ export default function AdminPanel() {
     await supabase.auth.signOut();
   };
 
-  // Approval Actions
-  const handleApproveRequest = async (reqId) => {
+  // Approval Actions (Group-based)
+  const handleApproveRequest = async (group) => {
     try {
       const { error } = await supabase
         .from('borrow_requests')
@@ -204,7 +236,7 @@ export default function AdminPanel() {
           status: 'approved',
           approved_at: new Date().toISOString()
         })
-        .eq('id', reqId);
+        .in('id', group.items.map(item => item.id));
         
       if (error) throw error;
       await fetchAdminData();
@@ -214,8 +246,8 @@ export default function AdminPanel() {
     }
   };
 
-  const handleOpenRejectModal = (req) => {
-    setRejectingRequest(req);
+  const handleOpenRejectModal = (group) => {
+    setRejectingRequest(group); // We store the group in rejectingRequest state
     setRejectReason('');
     setRejectModalOpen(true);
   };
@@ -230,7 +262,7 @@ export default function AdminPanel() {
           status: 'rejected',
           reject_reason: rejectReason
         })
-        .eq('id', rejectingRequest.id);
+        .in('id', rejectingRequest.items.map(item => item.id));
 
       if (error) throw error;
       setRejectModalOpen(false);
@@ -242,7 +274,7 @@ export default function AdminPanel() {
     }
   };
 
-  const handleReturnRequest = async (reqId) => {
+  const handleReturnRequest = async (group) => {
     try {
       const { error } = await supabase
         .from('borrow_requests')
@@ -250,7 +282,7 @@ export default function AdminPanel() {
           status: 'returned',
           returned_at: new Date().toISOString()
         })
-        .eq('id', reqId);
+        .in('id', group.items.map(item => item.id));
 
       if (error) throw error;
       await fetchAdminData();
@@ -599,7 +631,7 @@ export default function AdminPanel() {
           className={`admin-tab ${activeSubTab === 'requests' ? 'active' : ''}`}
           onClick={() => setActiveSubTab('requests')}
         >
-          租借審核管理 ({requests.filter(r => r.status === 'pending').length} 件待審)
+          租借審核管理 ({groupRequests(requests).filter(r => r.status === 'pending').length} 案待審)
         </button>
         <button
           className={`admin-tab ${activeSubTab === 'inventory' ? 'active' : ''}`}
@@ -634,8 +666,7 @@ export default function AdminPanel() {
                   <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>暫無租借申請紀錄</td>
                 </tr>
               ) : (
-                requests.map(req => {
-                  const aid = resources.find(r => r.id === req.resource_id);
+                groupRequests(requests).map(req => {
                   return (
                     <tr key={req.id}>
                       <td>
@@ -656,15 +687,25 @@ export default function AdminPanel() {
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{req.applicant_email}</div>
                       </td>
                       <td>
-                        <div style={{ fontWeight: 600 }}>{aid ? aid.name : '未知器材'}</div>
-                        {aid && (aid.brand || aid.model) && (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                            {aid.brand && `廠牌: ${aid.brand}`} {aid.model && ` | 型號: ${aid.model}`}
-                          </div>
-                        )}
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                          數量：<strong>{req.quantity}</strong> {aid ? aid.unit : '具'} | 預用日期：<strong>{req.required_date}</strong>
-                        </div>
+                        {req.items.map((item, idx) => {
+                          const aid = resources.find(r => r.id === item.resource_id);
+                          return (
+                            <div key={item.id} style={{ 
+                              padding: '0.4rem 0', 
+                              borderBottom: idx < req.items.length - 1 ? '1px dashed var(--border-color)' : 'none' 
+                            }}>
+                              <div style={{ fontWeight: 600 }}>{aid ? aid.name : '未知器材'}</div>
+                              {aid && (aid.brand || aid.model) && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                  {aid.brand && `廠牌: ${aid.brand}`} {aid.model && ` | 型號: ${aid.model}`}
+                                </div>
+                              )}
+                              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                                數量：<strong>{item.quantity}</strong> {aid ? aid.unit : '具'} | 預用日期：<strong>{item.required_date}</strong>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </td>
                       <td>
                         <span className={`kanban-card-badge ${
@@ -683,7 +724,7 @@ export default function AdminPanel() {
                             <>
                               <button
                                 className="btn-small approve"
-                                onClick={() => handleApproveRequest(req.id)}
+                                onClick={() => handleApproveRequest(req)}
                               >
                                 <Check size={14} /> 批准
                               </button>
@@ -698,7 +739,7 @@ export default function AdminPanel() {
                           {req.status === 'approved' && (
                             <button
                               className="btn-small return"
-                              onClick={() => handleReturnRequest(req.id)}
+                              onClick={() => handleReturnRequest(req)}
                             >
                               <Undo2 size={14} /> 確認歸還
                             </button>
@@ -1028,9 +1069,20 @@ export default function AdminPanel() {
             <div className="modal-body">
               <form onSubmit={handleRejectRequestSubmit}>
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                  即將退回 <strong>{rejectingRequest?.applicant_name}</strong> 的租借申請：<br />
-                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{getResourceName(rejectingRequest?.resource_id)}</span>
+                  即將退回 <strong>{rejectingRequest?.applicant_name}</strong> 的租借申請（案件編號：{rejectingRequest && formatCaseNumber(rejectingRequest.id, rejectingRequest.created_at)}）：
                 </p>
+                <div style={{ margin: '0.5rem 0 1rem', maxHeight: '150px', overflowY: 'auto', background: 'var(--bg-secondary)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>退回器材明細：</div>
+                  {rejectingRequest?.items?.map(item => {
+                    const aid = resources.find(r => r.id === item.resource_id);
+                    return (
+                      <div key={item.id} style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
+                        <span>• {aid ? aid.name : '未知器材'}</span>
+                        <span>{item.quantity} {aid ? aid.unit : '具'}</span>
+                      </div>
+                    );
+                  })}
+                </div>
                 <div className="form-group">
                   <label>退回原因 / 說明 *</label>
                   <input

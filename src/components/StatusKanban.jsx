@@ -17,6 +17,38 @@ const formatCaseNumber = (id, createdAt) => {
   return `ERMS-${dateStr}-${char1}${char2}`;
 };
 
+// Group borrow requests by applicant email, phone, and creation time (or emp_id + created_at)
+const groupRequests = (reqs) => {
+  const groups = {};
+  reqs.forEach(req => {
+    // We group by applicant_emp_id and created_at timestamp
+    const key = `${req.applicant_emp_id}_${req.created_at}`;
+    if (!groups[key]) {
+      groups[key] = {
+        id: req.id, // Using first ID as reference
+        applicant_name: req.applicant_name,
+        applicant_phone: req.applicant_phone,
+        applicant_emp_id: req.applicant_emp_id,
+        applicant_dept: req.applicant_dept,
+        applicant_email: req.applicant_email,
+        created_at: req.created_at,
+        required_date: req.required_date,
+        status: req.status,
+        reject_reason: req.reject_reason,
+        returned_at: req.returned_at,
+        approved_at: req.approved_at,
+        items: []
+      };
+    }
+    // Track min ID for consistent case number generation
+    if (req.id < groups[key].id) {
+      groups[key].id = req.id;
+    }
+    groups[key].items.push(req);
+  });
+  return Object.values(groups);
+};
+
 export default function StatusKanban() {
   const [requests, setRequests] = useState([]);
   const [resources, setResources] = useState([]);
@@ -72,18 +104,26 @@ export default function StatusKanban() {
     return aid ? `${aid.name} (${aid.brand || 'N/A'} - ${aid.model || 'N/A'})` : '未知器材';
   };
 
-  // Filter requests based on search (including case number e.g. ERMS-20260610-BA)
-  const filteredRequests = requests.filter(req => {
-    const resourceName = getResourceName(req.resource_id).toLowerCase();
-    const applicantName = req.applicant_name.toLowerCase();
-    const empId = req.applicant_emp_id.toLowerCase();
-    const dept = req.applicant_dept.toLowerCase();
-    const caseNumber = formatCaseNumber(req.id, req.created_at).toLowerCase();
-    const rawId = String(req.id).toLowerCase();
+  // Group all requests first
+  const groupedRequests = groupRequests(requests);
+
+  // Filter grouped requests based on search
+  const filteredRequests = groupedRequests.filter(group => {
+    const applicantName = group.applicant_name.toLowerCase();
+    const empId = group.applicant_emp_id.toLowerCase();
+    const dept = group.applicant_dept.toLowerCase();
+    const caseNumber = formatCaseNumber(group.id, group.created_at).toLowerCase();
+    const rawId = String(group.id).toLowerCase();
     const search = searchTerm.toLowerCase();
 
+    // Check if any resource name in the group matches the search term
+    const matchesResource = group.items.some(item => {
+      const name = getResourceName(item.resource_id).toLowerCase();
+      return name.includes(search);
+    });
+
     return (
-      resourceName.includes(search) ||
+      matchesResource ||
       applicantName.includes(search) ||
       empId.includes(search) ||
       dept.includes(search) ||
@@ -92,7 +132,7 @@ export default function StatusKanban() {
     );
   });
 
-  // Categorize
+  // Categorize grouped and filtered cases
   const pendingRequests = filteredRequests.filter(r => r.status === 'pending');
   const approvedRequests = filteredRequests.filter(r => r.status === 'approved');
   const returnedRequests = filteredRequests.filter(r => r.status === 'returned' || r.status === 'rejected');
@@ -163,14 +203,36 @@ export default function StatusKanban() {
                       {formatCaseNumber(req.id, req.created_at)}
                     </span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      數量：{req.quantity}
+                      品項數：{req.items.length}
                     </span>
                   </div>
-                  <div className="kanban-card-title">{getResourceName(req.resource_id)}</div>
+                  <div className="kanban-card-title">
+                    {req.items.length === 1 
+                      ? getResourceName(req.items[0].resource_id)
+                      : `${getResourceName(req.items[0].resource_id)} 等 ${req.items.length} 項`
+                    }
+                  </div>
                   <div className="kanban-card-detail">
                     <div>申請人：<span>{req.applicant_name} ({req.applicant_dept})</span></div>
                     <div>員工編號：<span>{req.applicant_emp_id}</span></div>
                     <div>需求日期：<span>{req.required_date}</span></div>
+                    
+                    {/* Item list detail */}
+                    <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border-color)' }}>
+                      {req.items.map(item => {
+                        const aid = resources.find(r => r.id === item.resource_id);
+                        return (
+                          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }} title={aid ? aid.name : '未知器材'}>
+                              • {aid ? aid.name : '未知器材'}
+                            </span>
+                            <span style={{ fontWeight: 600 }}>
+                              {item.quantity} {aid ? aid.unit : '具'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                   <div className="kanban-card-footer">
                     <span style={{ color: 'var(--text-muted)' }}>
@@ -215,14 +277,36 @@ export default function StatusKanban() {
                       {formatCaseNumber(req.id, req.created_at)}
                     </span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      數量：{req.quantity}
+                      品項數：{req.items.length}
                     </span>
                   </div>
-                  <div className="kanban-card-title">{getResourceName(req.resource_id)}</div>
+                  <div className="kanban-card-title">
+                    {req.items.length === 1 
+                      ? getResourceName(req.items[0].resource_id)
+                      : `${getResourceName(req.items[0].resource_id)} 等 ${req.items.length} 項`
+                    }
+                  </div>
                   <div className="kanban-card-detail">
                     <div>借用人：<span>{req.applicant_name} ({req.applicant_dept})</span></div>
                     <div>員工編號：<span>{req.applicant_emp_id}</span></div>
                     <div>借用日期：<span>{req.required_date}</span></div>
+                    
+                    {/* Item list detail */}
+                    <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border-color)' }}>
+                      {req.items.map(item => {
+                        const aid = resources.find(r => r.id === item.resource_id);
+                        return (
+                          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }} title={aid ? aid.name : '未知器材'}>
+                              • {aid ? aid.name : '未知器材'}
+                            </span>
+                            <span style={{ fontWeight: 600 }}>
+                              {item.quantity} {aid ? aid.unit : '具'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                   <div className="kanban-card-footer">
                     <span style={{ color: 'var(--text-muted)' }}>
@@ -267,10 +351,15 @@ export default function StatusKanban() {
                       {formatCaseNumber(req.id, req.created_at)}
                     </span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      數量：{req.quantity}
+                      品項數：{req.items.length}
                     </span>
                   </div>
-                  <div className="kanban-card-title">{getResourceName(req.resource_id)}</div>
+                  <div className="kanban-card-title">
+                    {req.items.length === 1 
+                      ? getResourceName(req.items[0].resource_id)
+                      : `${getResourceName(req.items[0].resource_id)} 等 ${req.items.length} 項`
+                    }
+                  </div>
                   <div className="kanban-card-detail">
                     <div>申請人：<span>{req.applicant_name} ({req.applicant_dept})</span></div>
                     <div>需求日期：<span>{req.required_date}</span></div>
@@ -279,6 +368,23 @@ export default function StatusKanban() {
                         拒絕原因：{req.reject_reason}
                       </div>
                     )}
+                    
+                    {/* Item list detail */}
+                    <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border-color)' }}>
+                      {req.items.map(item => {
+                        const aid = resources.find(r => r.id === item.resource_id);
+                        return (
+                          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }} title={aid ? aid.name : '未知器材'}>
+                              • {aid ? aid.name : '未知器材'}
+                            </span>
+                            <span style={{ fontWeight: 600 }}>
+                              {item.quantity} {aid ? aid.unit : '具'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                   <div className="kanban-card-footer">
                     <span style={{ color: 'var(--text-muted)' }}>
