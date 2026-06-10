@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { ShieldCheck, Plus, Trash2, Edit, Check, X, Undo2, Lock, LogOut, ArrowUp } from 'lucide-react';
+import { ShieldCheck, Plus, Trash2, Edit, Check, X, Undo2, Lock, LogOut, ArrowUp, Upload } from 'lucide-react';
 
 // Format Case Number as ERMS-YYYYMMDD-XX (e.g. ERMS-20260610-BA)
 const formatCaseNumber = (id, createdAt) => {
