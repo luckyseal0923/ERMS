@@ -1182,8 +1182,8 @@ export default function AdminPanel() {
 
       {/* Return checklist modal */}
       {returnModalOpen && returningGroup && (
-        <div className="modal-overlay">
-          <div className="modal-card" style={{ maxWidth: '500px' }}>
+        <div className="modal-overlay" onClick={() => setReturnModalOpen(false)}>
+          <div className="modal-container" style={{ maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>辦理器材歸還</h3>
               <button className="modal-close" onClick={() => setReturnModalOpen(false)}>&times;</button>
