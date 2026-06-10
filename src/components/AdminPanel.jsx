@@ -58,6 +58,30 @@ const groupRequests = (reqs) => {
     }
     groups[key].items.push(req);
   });
+
+  // Calculate dynamic status for the group based on items
+  Object.values(groups).forEach(group => {
+    const statuses = group.items.map(item => item.status);
+    const hasPending = statuses.includes('pending');
+    const hasApproved = statuses.includes('approved');
+    const hasReturned = statuses.includes('returned');
+    const hasRejected = statuses.includes('rejected');
+    
+    if (hasPending) {
+      group.status = 'pending';
+    } else if (hasApproved && hasReturned) {
+      group.status = 'partially_returned';
+    } else if (hasApproved) {
+      group.status = 'approved';
+    } else if (hasReturned) {
+      group.status = 'returned';
+    } else if (hasRejected) {
+      group.status = 'rejected';
+    } else {
+      group.status = 'approved';
+    }
+  });
+
   return Object.values(groups);
 };
 

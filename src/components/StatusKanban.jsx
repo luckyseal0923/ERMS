@@ -46,6 +46,30 @@ const groupRequests = (reqs) => {
     }
     groups[key].items.push(req);
   });
+
+  // Calculate dynamic status for the group based on items
+  Object.values(groups).forEach(group => {
+    const statuses = group.items.map(item => item.status);
+    const hasPending = statuses.includes('pending');
+    const hasApproved = statuses.includes('approved');
+    const hasReturned = statuses.includes('returned');
+    const hasRejected = statuses.includes('rejected');
+    
+    if (hasPending) {
+      group.status = 'pending';
+    } else if (hasApproved && hasReturned) {
+      group.status = 'partially_returned';
+    } else if (hasApproved) {
+      group.status = 'approved';
+    } else if (hasReturned) {
+      group.status = 'returned';
+    } else if (hasRejected) {
+      group.status = 'rejected';
+    } else {
+      group.status = 'approved';
+    }
+  });
+
   return Object.values(groups);
 };
 
@@ -134,7 +158,7 @@ export default function StatusKanban() {
 
   // Categorize grouped and filtered cases
   const pendingRequests = filteredRequests.filter(r => r.status === 'pending');
-  const approvedRequests = filteredRequests.filter(r => r.status === 'approved');
+  const approvedRequests = filteredRequests.filter(r => r.status === 'approved' || r.status === 'partially_returned');
   const returnedRequests = filteredRequests.filter(r => r.status === 'returned' || r.status === 'rejected');
 
   if (loading && requests.length === 0) {
@@ -297,8 +321,13 @@ export default function StatusKanban() {
                         const aid = resources.find(r => r.id === item.resource_id);
                         return (
                           <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }} title={aid ? aid.name : '未知器材'}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px' }} title={aid ? aid.name : '未知器材'}>
                               • {aid ? aid.name : '未知器材'}
+                              {item.status === 'returned' && (
+                                <span className="kanban-card-badge kanban-badge-returned" style={{ marginLeft: '0.4rem', fontSize: '0.65rem', padding: '0px 3px', verticalAlign: 'middle' }}>
+                                  已還
+                                </span>
+                              )}
                             </span>
                             <span style={{ fontWeight: 600 }}>
                               {item.quantity} {aid ? aid.unit : '具'}
@@ -312,7 +341,9 @@ export default function StatusKanban() {
                     <span style={{ color: 'var(--text-muted)' }}>
                       已於 {req.approved_at ? new Date(req.approved_at).toLocaleDateString('zh-TW') : '日前'} 批准
                     </span>
-                    <span className="kanban-card-badge kanban-badge-approved">使用中</span>
+                    <span className={`kanban-card-badge ${req.status === 'partially_returned' ? 'kanban-badge-partial' : 'kanban-badge-approved'}`}>
+                      {req.status === 'partially_returned' ? '部分歸還' : '使用中'}
+                    </span>
                   </div>
                 </div>
               ))
