@@ -17,6 +17,18 @@ const formatCaseNumber = (id, createdAt) => {
   return `ERMS-${dateStr}-${char1}${char2}`;
 };
 
+// Format Date Time as YYYY-MM-DD HH:mm
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const hh = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+};
+
 export default function AdminPanel() {
   const [session, setSession] = useState(null);
   const [isRegister, setIsRegister] = useState(false);
@@ -607,11 +619,11 @@ export default function AdminPanel() {
           <table>
             <thead>
               <tr>
-                <th>器材名稱</th>
-                <th>申請人 / 員工編號</th>
+                <th>案件起單時間 / 案件編號</th>
+                <th>申請人及員工編號</th>
                 <th>申請單位</th>
-                <th>手機 / 信箱</th>
-                <th>預約借用日期</th>
+                <th>手機及信箱</th>
+                <th>預借器材清單</th>
                 <th>申請狀態</th>
                 <th>審核操作</th>
               </tr>
@@ -622,73 +634,90 @@ export default function AdminPanel() {
                   <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>暫無租借申請紀錄</td>
                 </tr>
               ) : (
-                requests.map(req => (
-                  <tr key={req.id}>
-                    <td style={{ fontWeight: 600 }}>{getResourceName(req.resource_id)}</td>
-                    <td>
-                      <div>{req.applicant_name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>工號: {req.applicant_emp_id}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600, fontFamily: 'monospace', marginTop: '2px' }}>
-                        {formatCaseNumber(req.id, req.created_at)}
-                      </div>
-                    </td>
-                    <td>{req.applicant_dept}</td>
-                    <td>
-                      <div>{req.applicant_phone}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{req.applicant_email}</div>
-                    </td>
-                    <td>{req.required_date}</td>
-                    <td>
-                      <span className={`kanban-card-badge ${
-                        req.status === 'pending' ? 'kanban-badge-pending' :
-                        req.status === 'approved' ? 'kanban-badge-approved' :
-                        req.status === 'returned' ? 'kanban-badge-returned' : 'kanban-badge-rejected'
-                      }`}>
-                        {req.status === 'pending' ? '待審核' :
-                         req.status === 'approved' ? '租借中' :
-                         req.status === 'returned' ? '已歸還' : '已拒絕'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="action-buttons">
-                        {req.status === 'pending' && (
-                          <>
+                requests.map(req => {
+                  const aid = resources.find(r => r.id === req.resource_id);
+                  return (
+                    <tr key={req.id}>
+                      <td>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                          {formatDateTime(req.created_at)}
+                        </div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary)', fontFamily: 'monospace', marginTop: '2px' }}>
+                          {formatCaseNumber(req.id, req.created_at)}
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{req.applicant_name}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>工號: {req.applicant_emp_id}</div>
+                      </td>
+                      <td>{req.applicant_dept}</td>
+                      <td>
+                        <div>{req.applicant_phone}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{req.applicant_email}</div>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{aid ? aid.name : '未知器材'}</div>
+                        {aid && (aid.brand || aid.model) && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                            {aid.brand && `廠牌: ${aid.brand}`} {aid.model && ` | 型號: ${aid.model}`}
+                          </div>
+                        )}
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                          數量：<strong>{req.quantity}</strong> {aid ? aid.unit : '具'} | 預用日期：<strong>{req.required_date}</strong>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`kanban-card-badge ${
+                          req.status === 'pending' ? 'kanban-badge-pending' :
+                          req.status === 'approved' ? 'kanban-badge-approved' :
+                          req.status === 'returned' ? 'kanban-badge-returned' : 'kanban-badge-rejected'
+                        }`}>
+                          {req.status === 'pending' ? '待審核' :
+                           req.status === 'approved' ? '租借中' :
+                           req.status === 'returned' ? '已歸還' : '已拒絕'}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="action-buttons">
+                          {req.status === 'pending' && (
+                            <>
+                              <button
+                                className="btn-small approve"
+                                onClick={() => handleApproveRequest(req.id)}
+                              >
+                                <Check size={14} /> 批准
+                              </button>
+                              <button
+                                className="btn-small reject"
+                                onClick={() => handleOpenRejectModal(req)}
+                              >
+                                <X size={14} /> 拒絕
+                              </button>
+                            </>
+                          )}
+                          {req.status === 'approved' && (
                             <button
-                              className="btn-small approve"
-                              onClick={() => handleApproveRequest(req.id)}
+                              className="btn-small return"
+                              onClick={() => handleReturnRequest(req.id)}
                             >
-                              <Check size={14} /> 批准
+                              <Undo2 size={14} /> 確認歸還
                             </button>
-                            <button
-                              className="btn-small reject"
-                              onClick={() => handleOpenRejectModal(req)}
-                            >
-                              <X size={14} /> 拒絕
-                            </button>
-                          </>
-                        )}
-                        {req.status === 'approved' && (
-                          <button
-                            className="btn-small return"
-                            onClick={() => handleReturnRequest(req.id)}
-                          >
-                            <Undo2 size={14} /> 確認歸還
-                          </button>
-                        )}
-                        {req.status === 'returned' && (
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                            歸還於 {new Date(req.returned_at).toLocaleDateString('zh-TW')}
-                          </span>
-                        )}
-                        {req.status === 'rejected' && (
-                          <span style={{ fontSize: '0.8rem', color: 'var(--danger)' }} title={req.reject_reason}>
-                            已拒絕 ({req.reject_reason || '未說明'})
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                          )}
+                          {req.status === 'returned' && (
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                              歸還於 {new Date(req.returned_at).toLocaleDateString('zh-TW')}
+                            </span>
+                          )}
+                          {req.status === 'rejected' && (
+                            <span style={{ fontSize: '0.8rem', color: 'var(--danger)' }} title={req.reject_reason}>
+                              已拒絕 ({req.reject_reason || '未說明'})
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
