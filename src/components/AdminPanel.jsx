@@ -4,10 +4,23 @@ import { ShieldCheck, Plus, Trash2, Edit, Check, X, Undo2, Lock, LogOut } from '
 
 export default function AdminPanel() {
   const [session, setSession] = useState(null);
+  const [isRegister, setIsRegister] = useState(false);
+  
+  // Login form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
+
+  // Register form state
+  const [regName, setRegName] = useState('');
+  const [regEmpId, setRegEmpId] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regInvite, setRegInvite] = useState('');
+  const [regLoading, setRegLoading] = useState(false);
+  const [regError, setRegError] = useState('');
+  const [regSuccess, setRegSuccess] = useState('');
 
   // Main admin panel states
   const [activeSubTab, setActiveSubTab] = useState('requests'); // requests | inventory
@@ -95,6 +108,45 @@ export default function AdminPanel() {
       setLoginError('登入失敗，請確認信箱及密碼是否正確，或已在 Supabase 註冊此管理員。');
     } finally {
       setLoginLoading(false);
+    }
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setRegError('');
+    setRegSuccess('');
+
+    // Pre-shared Admin Invitation Code validation
+    if (regInvite.trim() !== 'ERMS2026') {
+      setRegError('註冊邀請碼有誤，請洽教學部系統管理員取得。');
+      return;
+    }
+
+    setRegLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: regEmail,
+        password: regPassword,
+        options: {
+          data: {
+            display_name: regName,
+            emp_id: regEmpId,
+          }
+        }
+      });
+      if (error) throw error;
+      setRegSuccess('申請成功！若 Supabase 設定了信箱驗證，請至信箱點擊確認連結；若已關閉信箱驗證，您可立即在此登入。');
+      // Clear fields
+      setRegName('');
+      setRegEmpId('');
+      setRegEmail('');
+      setRegPassword('');
+      setRegInvite('');
+    } catch (err) {
+      console.error('Register error:', err);
+      setRegError(`申請失敗：${err.message || '請確認信箱格式正確且密碼大於 6 位數。'}`);
+    } finally {
+      setRegLoading(false);
     }
   };
 
@@ -265,47 +317,135 @@ export default function AdminPanel() {
   if (!session) {
     return (
       <div className="auth-container">
-        <div className="auth-card">
-          <div className="auth-header">
-            <Lock size={40} />
-            <h2>管理後台登入</h2>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-              僅限教學部管理人員登入
-            </p>
-          </div>
-          <form onSubmit={handleLogin}>
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label>管理員信箱</label>
-              <input
-                type="email"
-                className="input-field"
-                placeholder="email@hospital.org.tw"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label>密碼</label>
-              <input
-                type="password"
-                className="input-field"
-                placeholder="請輸入密碼"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            {loginError && <p className="error-text" style={{ marginBottom: '1rem' }}>{loginError}</p>}
-            <button type="submit" className="btn-primary" disabled={loginLoading}>
-              {loginLoading ? '登入中...' : '安全登入'}
+        <div className="auth-card" style={{ maxWidth: '450px' }}>
+          <div className="admin-tabs" style={{ marginBottom: '2rem' }}>
+            <button
+              type="button"
+              className={`admin-tab ${!isRegister ? 'active' : ''}`}
+              onClick={() => { setIsRegister(false); setLoginError(''); }}
+              style={{ flex: 1, textAlign: 'center' }}
+            >
+              管理員登入
             </button>
-          </form>
+            <button
+              type="button"
+              className={`admin-tab ${isRegister ? 'active' : ''}`}
+              onClick={() => { setIsRegister(true); setRegError(''); setRegSuccess(''); }}
+              style={{ flex: 1, textAlign: 'center' }}
+            >
+              申請管理帳號
+            </button>
+          </div>
 
-          <div style={{ marginTop: '2rem', padding: '1rem', background: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px dashed var(--border-color)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            <strong>💡 如何新增管理員？</strong>
-            <p style={{ marginTop: '0.25rem', lineHeight: '1.4' }}>
-              請前往您 Supabase 專案的 <strong>Authentication &gt; Users</strong> 點選 <strong>Add User &gt; Create User</strong> 建立您的 Email 與 Password，即可在此登入。
+          {!isRegister ? (
+            /* LOGIN FORM */
+            <form onSubmit={handleLogin}>
+              <div className="auth-header" style={{ marginBottom: '1.5rem' }}>
+                <Lock size={32} style={{ color: 'var(--primary)', display: 'block', margin: '0 auto 0.5rem' }} />
+                <h3>管理後台登入</h3>
+              </div>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label>管理員信箱</label>
+                <input
+                  type="email"
+                  className="input-field"
+                  placeholder="email@hospital.org.tw"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label>密碼</label>
+                <input
+                  type="password"
+                  className="input-field"
+                  placeholder="請輸入密碼"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              {loginError && <p className="error-text" style={{ marginBottom: '1rem' }}>{loginError}</p>}
+              <button type="submit" className="btn-primary" disabled={loginLoading} style={{ marginTop: '1rem' }}>
+                {loginLoading ? '登入中...' : '安全登入'}
+              </button>
+            </form>
+          ) : (
+            /* REGISTER FORM */
+            <form onSubmit={handleRegister}>
+              <div className="auth-header" style={{ marginBottom: '1.5rem' }}>
+                <ShieldCheck size={32} style={{ color: 'var(--accent)', display: 'block', margin: '0 auto 0.5rem' }} />
+                <h3>管理帳號申請</h3>
+              </div>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label>管理員姓名 *</label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="請輸入姓名"
+                  value={regName}
+                  onChange={(e) => setRegName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label>員工編號 *</label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="請輸入員工編號"
+                  value={regEmpId}
+                  onChange={(e) => setRegEmpId(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label>管理員信箱 *</label>
+                <input
+                  type="email"
+                  className="input-field"
+                  placeholder="email@hospital.org.tw"
+                  value={regEmail}
+                  onChange={(e) => setRegEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label>設定密碼 * (至少 6 位元)</label>
+                <input
+                  type="password"
+                  className="input-field"
+                  placeholder="設定登入密碼"
+                  value={regPassword}
+                  onChange={(e) => setRegPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label>註冊邀請碼 * (預設: ERMS2026)</label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="請輸入註冊驗證密鑰"
+                  value={regInvite}
+                  onChange={(e) => setRegInvite(e.target.value)}
+                  required
+                />
+                <span className="helper-text">為防止他人任意註冊，請輸入邀請碼 <strong>ERMS2026</strong></span>
+              </div>
+              {regError && <p className="error-text" style={{ marginBottom: '1rem' }}>{regError}</p>}
+              {regSuccess && <p className="success-text" style={{ color: 'var(--success)', fontSize: '0.85rem', marginBottom: '1rem', lineHeight: '1.4' }}>{regSuccess}</p>}
+              <button type="submit" className="btn-primary" disabled={regLoading} style={{ marginTop: '1rem', background: 'var(--accent)' }}>
+                {regLoading ? '申請中...' : '提交帳號申請'}
+              </button>
+            </form>
+          )}
+
+          <div style={{ marginTop: '2rem', padding: '1rem', background: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px dashed var(--border-color)', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+            <strong>💡 說明：</strong>
+            <p style={{ marginTop: '0.25rem' }}>
+              登入與註冊均使用 Supabase Auth 系統。若註冊後登入顯示「Email not confirmed」，請至 Supabase Dashboard 關閉信箱驗證（Confirm email）或檢查信箱點擊驗證連結。
             </p>
           </div>
         </div>
