@@ -355,14 +355,36 @@ export default function RequestPage() {
                       </div>
                     )}
                   </div>
-                  <button
-                    className="card-btn"
-                    disabled={remainingToBorrow <= 0}
-                    onClick={() => addToCart(item)}
-                    style={inCartQty > 0 && remainingToBorrow > 0 ? { background: 'var(--primary-glow)', color: 'var(--primary)' } : {}}
-                  >
-                    {available === 0 ? '目前無庫存' : remainingToBorrow <= 0 ? '已達借用上限' : inCartQty > 0 ? '繼續加入租借車' : '加入租借車'}
-                  </button>
+                  {available === 0 ? (
+                    <button className="card-btn" disabled>目前無庫存</button>
+                  ) : inCartQty === 0 ? (
+                    <button className="card-btn" onClick={() => addToCart(item)}>加入租借車</button>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', overflow: 'hidden', height: '40px' }}>
+                      <button 
+                        type="button"
+                        className="cart-qty-btn" 
+                        onClick={() => updateCartQty(item.id, -1)}
+                        style={{ width: '40px', height: '100%', borderRadius: 0, border: 'none', background: 'none' }}
+                        title="減少數量"
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+                        已選: {inCartQty} {item.unit || '具'}
+                      </span>
+                      <button 
+                        type="button"
+                        className="cart-qty-btn" 
+                        onClick={() => updateCartQty(item.id, 1)}
+                        disabled={remainingToBorrow <= 0}
+                        style={{ width: '40px', height: '100%', borderRadius: 0, border: 'none', background: 'none', cursor: remainingToBorrow <= 0 ? 'not-allowed' : 'pointer', opacity: remainingToBorrow <= 0 ? 0.5 : 1 }}
+                        title="增加數量"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
