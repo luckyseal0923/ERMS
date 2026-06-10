@@ -2,6 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Search, AlertCircle, CheckCircle2, ShoppingCart, Plus, Minus, Trash2 } from 'lucide-react';
 
+// Format Case Number as ERMS-YYYYMMDD-XX (e.g. ERMS-20260610-BA)
+const formatCaseNumber = (id, createdAt) => {
+  const date = new Date(createdAt || new Date());
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const dateStr = `${yyyy}${mm}${dd}`;
+  
+  const idVal = Number(id || 0);
+  const char1 = String.fromCharCode(65 + (idVal % 26));
+  const char2 = String.fromCharCode(65 + (Math.floor(idVal / 26) % 26));
+  
+  return `ERMS-${dateStr}-${char1}${char2}`;
+};
+
 export default function RequestPage() {
   const [resources, setResources] = useState([]);
   const [requests, setRequests] = useState([]);
@@ -438,8 +453,8 @@ export default function RequestPage() {
                   
                   <div style={{ margin: '1.5rem 0', padding: '1rem', background: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px dashed var(--border-color)', width: '100%' }}>
                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>您的案件申請編號：</span>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)', marginTop: '0.4rem', letterSpacing: '0.05em' }}>
-                      {submittedIds.map(id => `#${String(id).padStart(4, '0')}`).join(', ')}
+                    <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary)', marginTop: '0.4rem', letterSpacing: '0.05em', fontFamily: 'monospace' }}>
+                      {submittedIds.map(id => formatCaseNumber(id)).join(', ')}
                     </div>
                   </div>
 

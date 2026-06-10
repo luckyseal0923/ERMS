@@ -2,6 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Search, Clock, CheckCircle2, XCircle, Play, Calendar } from 'lucide-react';
 
+// Format Case Number as ERMS-YYYYMMDD-XX (e.g. ERMS-20260610-BA)
+const formatCaseNumber = (id, createdAt) => {
+  const date = new Date(createdAt || new Date());
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const dateStr = `${yyyy}${mm}${dd}`;
+  
+  const idVal = Number(id || 0);
+  const char1 = String.fromCharCode(65 + (idVal % 26));
+  const char2 = String.fromCharCode(65 + (Math.floor(idVal / 26) % 26));
+  
+  return `ERMS-${dateStr}-${char1}${char2}`;
+};
+
 export default function StatusKanban() {
   const [requests, setRequests] = useState([]);
   const [resources, setResources] = useState([]);
@@ -57,13 +72,13 @@ export default function StatusKanban() {
     return aid ? `${aid.name} (${aid.brand || 'N/A'} - ${aid.model || 'N/A'})` : '未知器材';
   };
 
-  // Filter requests based on search (including case number e.g. #0001)
+  // Filter requests based on search (including case number e.g. ERMS-20260610-BA)
   const filteredRequests = requests.filter(req => {
     const resourceName = getResourceName(req.resource_id).toLowerCase();
     const applicantName = req.applicant_name.toLowerCase();
     const empId = req.applicant_emp_id.toLowerCase();
     const dept = req.applicant_dept.toLowerCase();
-    const caseNumber = `#${String(req.id).padStart(4, '0')}`.toLowerCase();
+    const caseNumber = formatCaseNumber(req.id, req.created_at).toLowerCase();
     const rawId = String(req.id).toLowerCase();
     const search = searchTerm.toLowerCase();
 
@@ -145,7 +160,7 @@ export default function StatusKanban() {
                       fontFamily: 'monospace',
                       border: '1px solid rgba(14, 165, 233, 0.2)'
                     }}>
-                      #{String(req.id).padStart(4, '0')}
+                      {formatCaseNumber(req.id, req.created_at)}
                     </span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       數量：{req.quantity}
@@ -197,7 +212,7 @@ export default function StatusKanban() {
                       fontFamily: 'monospace',
                       border: '1px solid rgba(14, 165, 233, 0.2)'
                     }}>
-                      #{String(req.id).padStart(4, '0')}
+                      {formatCaseNumber(req.id, req.created_at)}
                     </span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       數量：{req.quantity}
@@ -249,7 +264,7 @@ export default function StatusKanban() {
                       fontFamily: 'monospace',
                       border: '1px solid rgba(14, 165, 233, 0.2)'
                     }}>
-                      #{String(req.id).padStart(4, '0')}
+                      {formatCaseNumber(req.id, req.created_at)}
                     </span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       數量：{req.quantity}

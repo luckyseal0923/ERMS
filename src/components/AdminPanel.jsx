@@ -2,6 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { ShieldCheck, Plus, Trash2, Edit, Check, X, Undo2, Lock, LogOut, ArrowUp } from 'lucide-react';
 
+// Format Case Number as ERMS-YYYYMMDD-XX (e.g. ERMS-20260610-BA)
+const formatCaseNumber = (id, createdAt) => {
+  const date = new Date(createdAt || new Date());
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const dateStr = `${yyyy}${mm}${dd}`;
+  
+  const idVal = Number(id || 0);
+  const char1 = String.fromCharCode(65 + (idVal % 26));
+  const char2 = String.fromCharCode(65 + (Math.floor(idVal / 26) % 26));
+  
+  return `ERMS-${dateStr}-${char1}${char2}`;
+};
+
 export default function AdminPanel() {
   const [session, setSession] = useState(null);
   const [isRegister, setIsRegister] = useState(false);
@@ -612,7 +627,10 @@ export default function AdminPanel() {
                     <td style={{ fontWeight: 600 }}>{getResourceName(req.resource_id)}</td>
                     <td>
                       <div>{req.applicant_name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>編號: {req.applicant_emp_id}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>工號: {req.applicant_emp_id}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600, fontFamily: 'monospace', marginTop: '2px' }}>
+                        {formatCaseNumber(req.id, req.created_at)}
+                      </div>
                     </td>
                     <td>{req.applicant_dept}</td>
                     <td>
