@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { ShieldCheck, Plus, Trash2, Edit, Check, X, Undo2, Lock, LogOut, ArrowDown, ArrowUp, Upload } from 'lucide-react';
+import { ShieldCheck, Plus, Trash2, Edit, Check, X, Undo2, Lock, LogOut, ArrowUp } from 'lucide-react';
 
 export default function AdminPanel() {
   const [session, setSession] = useState(null);
@@ -33,6 +33,14 @@ export default function AdminPanel() {
 
   // Lightbox state
   const [lightboxImage, setLightboxImage] = useState(null);
+
+  // Re-authentication modal state (for Take Down / Delete)
+  const [reAuthModalOpen, setReAuthModalOpen] = useState(false);
+  const [reAuthItem, setReAuthItem] = useState(null);
+  const [reAuthEmail, setReAuthEmail] = useState('');
+  const [reAuthPassword, setReAuthPassword] = useState('');
+  const [reAuthLoading, setReAuthLoading] = useState(false);
+  const [reAuthError, setReAuthError] = useState('');
 
   // Edit / Add modal states
   const [itemModalOpen, setItemModalOpen] = useState(false);
@@ -225,20 +233,66 @@ export default function AdminPanel() {
     }
   };
 
-  // Toggle active/inactive status (下架/上架)
-  const handleToggleActive = async (item) => {
+  // Open Re-authentication modal for Taking Down/Deleting
+  const handleOpenReAuthModal = (item) => {
+    setReAuthItem(item);
+    setReAuthEmail(session?.user?.email || '');
+    setReAuthPassword('');
+    setReAuthError('');
+    setReAuthModalOpen(true);
+  };
+
+  // Execute Take Down/Delete after successful Re-authentication
+  const handleReAuthSubmit = async (e) => {
+    e.preventDefault();
+    if (!reAuthPassword.trim()) return;
+
     try {
-      const newActiveState = item.is_active !== false ? false : true;
+      setReAuthLoading(true);
+      setReAuthError('');
+
+      // Verify password by logging in again
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: reAuthEmail,
+        password: reAuthPassword
+      });
+
+      if (authError) throw authError;
+
+      // Update the item status to false (Take Down)
+      const { error: updateError } = await supabase
+        .from('teaching_aids')
+        .update({ is_active: false })
+        .eq('id', reAuthItem.id);
+
+      if (updateError) throw updateError;
+
+      setReAuthModalOpen(false);
+      setReAuthItem(null);
+      setReAuthPassword('');
+      await fetchAdminData();
+      alert(`已成功下架/刪除器材「${reAuthItem.name}」！`);
+    } catch (err) {
+      console.error('Re-auth error:', err);
+      setReAuthError('二次認證失敗，密碼錯誤或帳號不符合管理員身份。');
+    } finally {
+      setReAuthLoading(false);
+    }
+  };
+
+  // Restore/Put back up an item (doesn't require password, as it's a non-destructive action)
+  const handlePutUpItem = async (itemId) => {
+    try {
       const { error } = await supabase
         .from('teaching_aids')
-        .update({ is_active: newActiveState })
-        .eq('id', item.id);
+        .update({ is_active: true })
+        .eq('id', itemId);
         
       if (error) throw error;
       await fetchAdminData();
     } catch (err) {
-      console.error('Error toggling active state:', err);
-      alert('切換上下架狀態失敗，請確認資料表已新增 is_active 欄位。');
+      console.error('Error putting up item:', err);
+      alert('上架器材失敗。');
     }
   };
 
@@ -342,22 +396,6 @@ export default function AdminPanel() {
     } catch (err) {
       console.error('Error saving item:', err);
       alert('儲存器材失敗，請檢查資料庫連線或 RLS 安全設定。');
-    }
-  };
-
-  const handleDeleteItem = async (itemId, itemName) => {
-    if (!window.confirm(`確定要【永久刪除】器材「${itemName}」嗎？（這將會同時刪除與其相關的所有歷史租借紀錄，建議使用【下架】功能即可）`)) return;
-
-    try {
-      const { error } = await supabase
-        .from('teaching_aids')
-        .delete()
-        .eq('id', itemId);
-      if (error) throw error;
-      await fetchAdminData();
-    } catch (err) {
-      console.error('Error deleting item:', err);
-      alert('刪除器材失敗。');
     }
   };
 
@@ -656,20 +694,19 @@ export default function AdminPanel() {
                   <th>規格 / 型號</th>
                   <th>總數量</th>
                   <th>狀態</th>
-                  <th>上下架操作</th>
-                  <th>編輯/刪除</th>
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody>
                 {resources.length === 0 ? (
                   <tr>
-                    <td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>暫無器材資料庫，請新增上架。</td>
+                    <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>暫無器材資料庫，請新增上架。</td>
                   </tr>
                 ) : (
                   resources.map(item => {
                     const isActive = item.is_active !== false;
                     return (
-                      <tr key={item.id} style={{ opacity: isActive ? 1 : 0.6 }}>
+                      <tr key={item.id} style={{ opacity: isActive ? 1 : 0.65 }}>
                         <td style={{ color: 'var(--text-muted)' }}>{item.id}</td>
                         <td style={{ fontWeight: 600 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -693,20 +730,6 @@ export default function AdminPanel() {
                           </span>
                         </td>
                         <td>
-                          <button
-                            className="btn-small"
-                            onClick={() => handleToggleActive(item)}
-                            style={{ 
-                              background: isActive ? 'var(--bg-tertiary)' : 'var(--accent)', 
-                              color: isActive ? 'var(--text-primary)' : '#fff',
-                              borderColor: 'var(--border-color)'
-                            }}
-                          >
-                            {isActive ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
-                            {isActive ? '下架' : '上架'}
-                          </button>
-                        </td>
-                        <td>
                           <div className="action-buttons">
                             <button
                               className="btn-icon"
@@ -715,13 +738,25 @@ export default function AdminPanel() {
                             >
                               <Edit size={16} />
                             </button>
-                            <button
-                              className="btn-icon delete"
-                              title="永久刪除此器材（含租借歷史）"
-                              onClick={() => handleDeleteItem(item.id, item.name)}
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                            
+                            {isActive ? (
+                              <button
+                                className="btn-icon delete"
+                                title="下架此器材（需要管理員帳密認證）"
+                                onClick={() => handleOpenReAuthModal(item)}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            ) : (
+                              <button
+                                className="btn-small"
+                                title="重新上架此器材"
+                                onClick={() => handlePutUpItem(item.id)}
+                                style={{ background: 'var(--primary)', color: '#fff', padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}
+                              >
+                                <ArrowUp size={12} /> 重新上架
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -867,6 +902,67 @@ export default function AdminPanel() {
 
                 <button type="submit" className="btn-primary" disabled={uploading}>
                   {selectedItem ? '確認修改' : '確認上架'}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Re-Authentication Modal (For delete/take down) */}
+      {reAuthModalOpen && (
+        <div className="modal-overlay" onClick={() => setReAuthModalOpen(false)}>
+          <div className="modal-container" style={{ maxWidth: '450px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Lock size={20} />
+                下架器材二次身分確認
+              </h3>
+              <button className="modal-close" onClick={() => setReAuthModalOpen(false)}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <form onSubmit={handleReAuthSubmit}>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem', lineHeight: '1.4' }}>
+                  即將下架器材：<br />
+                  <strong style={{ color: 'var(--text-primary)', fontSize: '1rem' }}>{reAuthItem?.name}</strong>
+                  <br />
+                  此動作將使該器材自租借申請首頁隱藏。**請輸入您的管理員帳號密碼進行安全確認**。
+                </p>
+
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label>管理員信箱</label>
+                  <input
+                    type="email"
+                    className="input-field"
+                    placeholder="email@hospital.org.tw"
+                    value={reAuthEmail}
+                    onChange={(e) => setReAuthEmail(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label>管理員密碼</label>
+                  <input
+                    type="password"
+                    className="input-field"
+                    placeholder="請輸入管理員密碼"
+                    value={reAuthPassword}
+                    onChange={(e) => setReAuthPassword(e.target.value)}
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                {reAuthError && <p className="error-text" style={{ marginBottom: '1rem' }}>{reAuthError}</p>}
+
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={reAuthLoading}
+                  style={{ background: 'var(--danger)', marginTop: '1.5rem' }}
+                >
+                  {reAuthLoading ? '認證中...' : '確認認證並下架器材'}
                 </button>
               </form>
             </div>
