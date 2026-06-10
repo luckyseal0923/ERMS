@@ -86,7 +86,7 @@ const groupRequests = (reqs) => {
 };
 
 export default function AdminPanel() {
-  const [session, setSession] = useState(null);
+  const [session, setSession] = useState(null); // { email, name, emp_id, role }
   const [isRegister, setIsRegister] = useState(false);
   
   // Login form state
@@ -100,16 +100,29 @@ export default function AdminPanel() {
   const [regEmpId, setRegEmpId] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
+  const [regRole, setRegRole] = useState('general'); // general | system
   const [regInvite, setRegInvite] = useState('');
   const [regLoading, setRegLoading] = useState(false);
   const [regError, setRegError] = useState('');
   const [regSuccess, setRegSuccess] = useState('');
 
   // Main admin panel states
-  const [activeSubTab, setActiveSubTab] = useState('requests'); // requests | inventory
+  const [activeSubTab, setActiveSubTab] = useState('requests'); // requests | inventory | accounts
   const [requests, setRequests] = useState([]);
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Custom database accounts state (For System Admin only)
+  const [accounts, setAccounts] = useState([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [accountsSearchQuery, setAccountsSearchQuery] = useState('');
+
+  // Reset password modal states
+  const [resetPasswordModalOpen, setResetPasswordModalOpen] = useState(false);
+  const [resetPasswordAccount, setResetPasswordAccount] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
+  const [resetPasswordError, setResetPasswordError] = useState('');
 
   // File upload state
   const [uploading, setUploading] = useState(false);
@@ -191,23 +204,131 @@ export default function AdminPanel() {
     }
   };
 
+  const fetchAccounts = async () => {
+    try {
+      setAccountsLoading(true);
+      const { data, error } = await supabase
+        .from('admin_accounts')
+        .select('*')
+        .order('id', { ascending: true });
+      if (error) throw error;
+      setAccounts(data || []);
+    } catch (err) {
+      console.error('Error fetching accounts:', err);
+    } finally {
+      setAccountsLoading(false);
+    }
+  };
+
+  const handleToggleRole = async (account) => {
+    if (account.email === session?.email) {
+      alert('無法修改自己目前登入帳號的權限。');
+      return;
+    }
+    const newRole = account.role === 'system' ? 'general' : 'system';
+    const confirmMsg = `確定要將「${account.name}」的權限變更為 ${newRole === 'system' ? '系統管理員' : '一般管理者'} 嗎？`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setAccountsLoading(true);
+      const { error } = await supabase
+        .from('admin_accounts')
+        .update({ role: newRole })
+        .eq('id', account.id);
+
+      if (error) throw error;
+      alert('權限修改成功！');
+      await fetchAccounts();
+    } catch (err) {
+      console.error('Error updating role:', err);
+      alert('修改權限失敗。');
+    } finally {
+      setAccountsLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async (account) => {
+    if (account.email === session?.email) {
+      alert('無法刪除自己目前正在使用的帳號。');
+      return;
+    }
+    const confirmMsg = `確定要刪除管理者「${account.name}」的帳號嗎？此動作將永久移除其登入權限。`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setAccountsLoading(true);
+      const { error } = await supabase
+        .from('admin_accounts')
+        .delete()
+        .eq('id', account.id);
+
+      if (error) throw error;
+      alert('帳號已成功刪除！');
+      await fetchAccounts();
+    } catch (err) {
+      console.error('Error deleting account:', err);
+      alert('刪除帳號失敗。');
+    } finally {
+      setAccountsLoading(false);
+    }
+  };
+
+  const handleOpenResetPasswordModal = (account) => {
+    setResetPasswordAccount(account);
+    setNewPassword('');
+    setResetPasswordError('');
+    setResetPasswordModalOpen(true);
+  };
+
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (!newPassword.trim()) {
+      setResetPasswordError('請輸入新密碼');
+      return;
+    }
+    if (newPassword.length < 4) {
+      setResetPasswordError('密碼長度至少需 4 個字元');
+      return;
+    }
+
+    try {
+      setResetPasswordLoading(true);
+      setResetPasswordError('');
+      const { error } = await supabase
+        .from('admin_accounts')
+        .update({ password: newPassword })
+        .eq('id', resetPasswordAccount.id);
+
+      if (error) throw error;
+      alert(`已成功將「${resetPasswordAccount.name}」的密碼重設！`);
+      setResetPasswordModalOpen(false);
+      setResetPasswordAccount(null);
+      setNewPassword('');
+    } catch (err) {
+      console.error('Error resetting password:', err);
+      setResetPasswordError('重設密碼失敗。');
+    } finally {
+      setResetPasswordLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
+    const storedUser = localStorage.getItem('erms_admin_user');
+    if (storedUser) {
+      try {
+        setSession(JSON.parse(storedUser));
+      } catch (e) {
+        localStorage.removeItem('erms_admin_user');
+      }
+    }
   }, []);
 
   useEffect(() => {
     if (session) {
       fetchAdminData();
+      if (session.role === 'system') {
+        fetchAccounts();
+      }
     }
   }, [session]);
 
@@ -215,14 +336,12 @@ export default function AdminPanel() {
     try {
       setLoading(true);
       
-      // Fetch teaching aids
       const { data: aids, error: aidsError } = await supabase
         .from('teaching_aids')
         .select('*')
         .order('id', { ascending: true });
       if (aidsError) throw aidsError;
 
-      // Fetch requests
       const { data: reqs, error: reqsError } = await supabase
         .from('borrow_requests')
         .select('*')
@@ -243,14 +362,28 @@ export default function AdminPanel() {
     setLoginLoading(true);
     setLoginError('');
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (error) throw error;
+      const { data, error } = await supabase
+        .from('admin_accounts')
+        .select('*')
+        .eq('email', email)
+        .eq('password', password)
+        .single();
+
+      if (error || !data) {
+        throw new Error('帳號或密碼錯誤');
+      }
+
+      const userSession = {
+        email: data.email,
+        name: data.name,
+        emp_id: data.emp_id,
+        role: data.role
+      };
+      localStorage.setItem('erms_admin_user', JSON.stringify(userSession));
+      setSession(userSession);
     } catch (err) {
       console.error('Login error:', err);
-      setLoginError('登入失敗，請確認信箱及密碼是否正確，或已在 Supabase 註冊此管理員。');
+      setLoginError('登入失敗，請確認信箱及密碼是否正確。');
     } finally {
       setLoginLoading(false);
     }
@@ -261,7 +394,6 @@ export default function AdminPanel() {
     setRegError('');
     setRegSuccess('');
 
-    // Pre-shared Admin Invitation Code validation
     if (regInvite.trim() !== 'ERMS2026') {
       setRegError('註冊邀請碼有誤，請洽教學部系統管理員取得。');
       return;
@@ -269,34 +401,49 @@ export default function AdminPanel() {
 
     setRegLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: regEmail,
-        password: regPassword,
-        options: {
-          data: {
-            display_name: regName,
-            emp_id: regEmpId,
-          }
-        }
-      });
+      const { data: existing, error: checkError } = await supabase
+        .from('admin_accounts')
+        .select('id')
+        .eq('email', regEmail)
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+      if (existing) {
+        setRegError('此信箱已被註冊。');
+        setRegLoading(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('admin_accounts')
+        .insert({
+          name: regName,
+          emp_id: regEmpId,
+          email: regEmail,
+          password: regPassword,
+          role: regRole
+        });
+
       if (error) throw error;
-      setRegSuccess('申請成功！若 Supabase 設定了信箱驗證，請至信箱點擊確認連結；若已關閉信箱驗證，您可立即在此登入。');
-      // Clear fields
+      setRegSuccess('帳號申請成功！您現在可以使用該帳密登入後台。');
+      
       setRegName('');
       setRegEmpId('');
       setRegEmail('');
       setRegPassword('');
       setRegInvite('');
+      setRegRole('general');
     } catch (err) {
       console.error('Register error:', err);
-      setRegError(`申請失敗：${err.message || '請確認信箱格式正確且密碼大於 6 位數。'}`);
+      setRegError(`申請失敗：${err.message || '請檢查資料欄位是否填寫正確。'}`);
     } finally {
       setRegLoading(false);
     }
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    localStorage.removeItem('erms_admin_user');
+    setSession(null);
   };
 
   // Approval Actions (Group-based)
@@ -350,7 +497,7 @@ export default function AdminPanel() {
   // Open Re-authentication modal for Taking Down/Deleting
   const handleOpenReAuthModal = (item) => {
     setReAuthItem(item);
-    setReAuthEmail(session?.user?.email || '');
+    setReAuthEmail(session?.email || '');
     setReAuthPassword('');
     setReAuthError('');
     setReAuthModalOpen(true);
@@ -365,13 +512,15 @@ export default function AdminPanel() {
       setReAuthLoading(true);
       setReAuthError('');
 
-      // Verify password by logging in again
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email: reAuthEmail,
-        password: reAuthPassword
-      });
+      // Verify password by checking in admin_accounts table
+      const { data, error: authError } = await supabase
+        .from('admin_accounts')
+        .select('*')
+        .eq('email', reAuthEmail)
+        .eq('password', reAuthPassword)
+        .single();
 
-      if (authError) throw authError;
+      if (authError || !data) throw new Error('認證失敗，帳密有誤');
 
       // Update the item status to false (Take Down)
       const { error: updateError } = await supabase
@@ -520,8 +669,7 @@ export default function AdminPanel() {
 
   // Loading indicator for fetching data after successful login
   const showDataSpinner = loading && session;
-
-  // Render Login page if no session
+   // Render Login page if no session
   if (!session) {
     return (
       <div className="auth-container">
@@ -630,12 +778,25 @@ export default function AdminPanel() {
                   required
                 />
               </div>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label>管理權限角色 *</label>
+                <select
+                  className="input-field"
+                  value={regRole}
+                  onChange={(e) => setRegRole(e.target.value)}
+                  required
+                  style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                >
+                  <option value="general">一般管理者</option>
+                  <option value="system">系統管理員</option>
+                </select>
+              </div>
               <div className="form-group" style={{ marginBottom: '1.5rem' }}>
                 <label>註冊邀請碼 * (預設: ERMS2026)</label>
                 <input
                   type="text"
                   className="input-field"
-                  placeholder="請輸入註冊驗證密鑰"
+                  placeholder="請輸入註冊邀請碼"
                   value={regInvite}
                   onChange={(e) => setRegInvite(e.target.value)}
                   required
@@ -653,7 +814,7 @@ export default function AdminPanel() {
           <div style={{ marginTop: '2rem', padding: '1rem', background: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px dashed var(--border-color)', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
             <strong>💡 說明：</strong>
             <p style={{ marginTop: '0.25rem' }}>
-              登入與註冊均使用 Supabase Auth 系統。若註冊後登入顯示「Email not confirmed」，請至 Supabase Dashboard 關閉信箱驗證（Confirm email）或檢查信箱點擊驗證連結。
+              本後台登入系統已對接獨立的管理者帳密資料庫。註冊成功後即可立即登入。若需管理其他帳號的密碼與權限，請以系統管理員身分登入。
             </p>
           </div>
         </div>
@@ -671,7 +832,7 @@ export default function AdminPanel() {
             後台管理系統
           </h1>
           <p className="subtitle" style={{ marginBottom: 0 }}>
-            目前登入者：{session.user.email} (管理者權限)
+            目前登入者：{session.name} ({session.email}) ─ 權限：{session.role === 'system' ? '系統管理員' : '一般管理者'}
           </p>
         </div>
         <button className="nav-link" onClick={handleLogout} style={{ color: 'var(--danger)', background: 'rgba(239, 68, 68, 0.08)' }}>
@@ -693,6 +854,12 @@ export default function AdminPanel() {
           onClick={() => setActiveSubTab('inventory')}
         >
           器材庫存管理 ({resources.length} 種)
+        </button>
+        <button
+          className={`admin-tab ${activeSubTab === 'accounts' ? 'active' : ''}`}
+          onClick={() => setActiveSubTab('accounts')}
+        >
+          帳號密碼管理
         </button>
       </div>
 
@@ -840,7 +1007,7 @@ export default function AdminPanel() {
             </tbody>
           </table>
         </div>
-      ) : (
+      ) : activeSubTab === 'inventory' ? (
         /* SUBTAB: INVENTORY CRUD */
         <div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
@@ -947,6 +1114,149 @@ export default function AdminPanel() {
             </table>
           </div>
         </div>
+      ) : (
+        /* SUBTAB: ACCOUNTS MANAGEMENT */
+        session.role !== 'system' ? (
+          /* General Admin: Access Denied view */
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '4rem 2rem',
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border-color)',
+            borderRadius: 'var(--radius-md)',
+            textAlign: 'center'
+          }}>
+            <ShieldCheck size={48} style={{ color: 'var(--danger)', marginBottom: '1rem' }} />
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+              權限不足
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', maxWidth: '400px', lineHeight: '1.5' }}>
+              您的登入身份為「一般管理者」。<br />
+              「帳號密碼管理」頁面僅限 **系統管理員** 進行查看與修改。
+            </p>
+          </div>
+        ) : (
+          /* System Admin: Full account management view */
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                管理帳號列表 (共 {accounts.length} 個帳號)
+              </div>
+              <div>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="搜尋姓名或信箱..."
+                  value={accountsSearchQuery}
+                  onChange={(e) => setAccountsSearchQuery(e.target.value)}
+                  style={{ maxWidth: '250px', padding: '0.5rem 0.75rem', fontSize: '0.85rem' }}
+                />
+              </div>
+            </div>
+
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>管理員姓名</th>
+                    <th>員工編號</th>
+                    <th>登入信箱</th>
+                    <th>身分權限</th>
+                    <th>註冊時間</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {accountsLoading ? (
+                    <tr>
+                      <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>
+                        <div className="spinner" style={{ margin: '0 auto' }}></div>
+                      </td>
+                    </tr>
+                  ) : accounts.filter(acc => 
+                    acc.name.toLowerCase().includes(accountsSearchQuery.toLowerCase()) ||
+                    acc.email.toLowerCase().includes(accountsSearchQuery.toLowerCase())
+                  ).length === 0 ? (
+                    <tr>
+                      <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>無符合搜尋條件的管理者帳號</td>
+                    </tr>
+                  ) : (
+                    accounts
+                      .filter(acc => 
+                        acc.name.toLowerCase().includes(accountsSearchQuery.toLowerCase()) ||
+                        acc.email.toLowerCase().includes(accountsSearchQuery.toLowerCase())
+                      )
+                      .map(acc => {
+                        const isSelf = acc.email === session?.email;
+                        return (
+                          <tr key={acc.id} style={{ opacity: isSelf ? 0.95 : 1 }}>
+                            <td style={{ color: 'var(--text-muted)' }}>{acc.id}</td>
+                            <td style={{ fontWeight: 600 }}>
+                              {acc.name} {isSelf && <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: 'var(--primary)', marginLeft: '4px' }}>(您自己)</span>}
+                            </td>
+                            <td>{acc.emp_id}</td>
+                            <td>{acc.email}</td>
+                            <td>
+                              <span className={`kanban-card-badge ${acc.role === 'system' ? 'kanban-badge-approved' : 'kanban-badge-pending'}`}>
+                                {acc.role === 'system' ? '系統管理員' : '一般管理者'}
+                              </span>
+                            </td>
+                            <td>{formatDateTime(acc.created_at)}</td>
+                            <td>
+                              <div className="action-buttons" style={{ gap: '0.5rem' }}>
+                                <button
+                                  className="btn-small"
+                                  title="重設該帳號密碼"
+                                  onClick={() => handleOpenResetPasswordModal(acc)}
+                                  style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                >
+                                  重設密碼
+                                </button>
+                                <button
+                                  className="btn-small"
+                                  title={acc.role === 'system' ? '變更為一般管理者' : '變更為系統管理員'}
+                                  onClick={() => handleToggleRole(acc)}
+                                  disabled={isSelf}
+                                  style={{ 
+                                    background: isSelf ? 'rgba(0,0,0,0.02)' : 'var(--primary)', 
+                                    color: isSelf ? 'var(--text-muted)' : '#fff', 
+                                    opacity: isSelf ? 0.5 : 1,
+                                    padding: '0.25rem 0.5rem', 
+                                    fontSize: '0.75rem',
+                                    cursor: isSelf ? 'not-allowed' : 'pointer'
+                                  }}
+                                >
+                                  修改權限
+                                </button>
+                                <button
+                                  className="btn-small reject"
+                                  title="刪除此管理者帳號"
+                                  onClick={() => handleDeleteAccount(acc)}
+                                  disabled={isSelf}
+                                  style={{ 
+                                    opacity: isSelf ? 0.5 : 1, 
+                                    cursor: isSelf ? 'not-allowed' : 'pointer',
+                                    padding: '0.25rem 0.5rem',
+                                    fontSize: '0.75rem'
+                                  }}
+                                >
+                                  刪除帳號
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
       )}
 
       {/* CRUD Add/Edit Modal */}
@@ -1294,6 +1604,49 @@ export default function AdminPanel() {
               style={{ width: '100%', height: 'auto', maxHeight: '80vh', objectFit: 'contain', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)' }} 
               onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800'; }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Reset Password Modal (For System Admin to manage accounts) */}
+      {resetPasswordModalOpen && resetPasswordAccount && (
+        <div className="modal-overlay" onClick={() => setResetPasswordModalOpen(false)}>
+          <div className="modal-container" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>重設管理員密碼</h3>
+              <button className="modal-close" onClick={() => setResetPasswordModalOpen(false)}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <form onSubmit={handleResetPasswordSubmit}>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.25rem', lineHeight: '1.4' }}>
+                  正在為管理者 <strong>{resetPasswordAccount.name}</strong> ({resetPasswordAccount.email}) 設定新密碼。
+                </p>
+
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label>請輸入新密碼</label>
+                  <input
+                    type="password"
+                    className="input-field"
+                    placeholder="請輸入新密碼 (至少 4 字元)"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                {resetPasswordError && <p className="error-text" style={{ marginBottom: '1rem' }}>{resetPasswordError}</p>}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+                  <button type="button" className="btn-secondary" onClick={() => setResetPasswordModalOpen(false)}>
+                    取消
+                  </button>
+                  <button type="submit" className="btn-primary" disabled={resetPasswordLoading}>
+                    {resetPasswordLoading ? '更新中...' : '確認更新密碼'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
