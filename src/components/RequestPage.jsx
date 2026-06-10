@@ -20,6 +20,9 @@ export default function RequestPage() {
   // Lightbox state
   const [lightboxImage, setLightboxImage] = useState(null);
   
+  // Submitted request IDs
+  const [submittedIds, setSubmittedIds] = useState([]);
+  
   // Form state
   const [form, setForm] = useState({
     name: '',
@@ -203,12 +206,16 @@ export default function RequestPage() {
         status: 'pending'
       }));
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('borrow_requests')
-        .insert(inserts);
+        .insert(inserts)
+        .select('id');
 
       if (error) throw error;
       
+      if (data) {
+        setSubmittedIds(data.map(r => r.id));
+      }
       setCheckoutSuccess(true);
       setCart([]); // Clear cart
       // Refresh requests data
@@ -427,9 +434,19 @@ export default function RequestPage() {
                 /* SUCCESS SCREEN */
                 <div className="empty-state" style={{ padding: '3rem 0' }}>
                   <CheckCircle2 size={64} style={{ color: 'var(--success)' }} />
-                  <h2>租借申請成功！</h2>
-                  <p style={{ margin: '1rem 0', lineHeight: '1.4' }}>您的批量租借申請已成功提交至教學部。</p>
-                  <p className="helper-text" style={{ marginBottom: '2rem' }}>請等待管理人員審核。您可切換至「租借狀態看板」查詢處理進度。</p>
+                  <h2 style={{ color: 'var(--success)', marginTop: '1rem' }}>租借申請成功！</h2>
+                  
+                  <div style={{ margin: '1.5rem 0', padding: '1rem', background: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px dashed var(--border-color)', width: '100%' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>您的案件申請編號：</span>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)', marginTop: '0.4rem', letterSpacing: '0.05em' }}>
+                      {submittedIds.map(id => `#${String(id).padStart(4, '0')}`).join(', ')}
+                    </div>
+                  </div>
+
+                  <p style={{ margin: '0.5rem 0 1.5rem', lineHeight: '1.4', fontSize: '0.9rem' }}>您的批量租借申請已成功提交至教學部。</p>
+                  <p className="helper-text" style={{ marginBottom: '2rem', fontSize: '0.8rem', lineHeight: '1.4' }}>
+                    請等待管理人員審核。您可前往「租借狀態看板」，以申請人姓名或上述【案件編號】查詢處理進度。
+                  </p>
                   <button className="btn-primary" onClick={() => setCartOpen(false)}>
                     關閉視窗
                   </button>

@@ -57,19 +57,23 @@ export default function StatusKanban() {
     return aid ? `${aid.name} (${aid.brand || 'N/A'} - ${aid.model || 'N/A'})` : '未知器材';
   };
 
-  // Filter requests based on search
+  // Filter requests based on search (including case number e.g. #0001)
   const filteredRequests = requests.filter(req => {
     const resourceName = getResourceName(req.resource_id).toLowerCase();
     const applicantName = req.applicant_name.toLowerCase();
     const empId = req.applicant_emp_id.toLowerCase();
     const dept = req.applicant_dept.toLowerCase();
+    const caseNumber = `#${String(req.id).padStart(4, '0')}`.toLowerCase();
+    const rawId = String(req.id).toLowerCase();
     const search = searchTerm.toLowerCase();
 
     return (
       resourceName.includes(search) ||
       applicantName.includes(search) ||
       empId.includes(search) ||
-      dept.includes(search)
+      dept.includes(search) ||
+      caseNumber.includes(search) ||
+      rawId === search
     );
   });
 
@@ -130,6 +134,23 @@ export default function StatusKanban() {
             ) : (
               pendingRequests.map(req => (
                 <div key={req.id} className="kanban-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <span className="case-number-badge" style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      color: 'var(--primary)',
+                      background: 'var(--primary-glow)',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      fontFamily: 'monospace',
+                      border: '1px solid rgba(14, 165, 233, 0.2)'
+                    }}>
+                      #{String(req.id).padStart(4, '0')}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      數量：{req.quantity}
+                    </span>
+                  </div>
                   <div className="kanban-card-title">{getResourceName(req.resource_id)}</div>
                   <div className="kanban-card-detail">
                     <div>申請人：<span>{req.applicant_name} ({req.applicant_dept})</span></div>
@@ -165,6 +186,23 @@ export default function StatusKanban() {
             ) : (
               approvedRequests.map(req => (
                 <div key={req.id} className="kanban-card" style={{ borderLeft: '3px solid var(--primary)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <span className="case-number-badge" style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      color: 'var(--primary)',
+                      background: 'var(--primary-glow)',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      fontFamily: 'monospace',
+                      border: '1px solid rgba(14, 165, 233, 0.2)'
+                    }}>
+                      #{String(req.id).padStart(4, '0')}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      數量：{req.quantity}
+                    </span>
+                  </div>
                   <div className="kanban-card-title">{getResourceName(req.resource_id)}</div>
                   <div className="kanban-card-detail">
                     <div>借用人：<span>{req.applicant_name} ({req.applicant_dept})</span></div>
@@ -200,6 +238,23 @@ export default function StatusKanban() {
             ) : (
               returnedRequests.map(req => (
                 <div key={req.id} className="kanban-card" style={{ opacity: 0.75 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <span className="case-number-badge" style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      color: 'var(--primary)',
+                      background: 'var(--primary-glow)',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      fontFamily: 'monospace',
+                      border: '1px solid rgba(14, 165, 233, 0.2)'
+                    }}>
+                      #{String(req.id).padStart(4, '0')}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      數量：{req.quantity}
+                    </span>
+                  </div>
                   <div className="kanban-card-title">{getResourceName(req.resource_id)}</div>
                   <div className="kanban-card-detail">
                     <div>申請人：<span>{req.applicant_name} ({req.applicant_dept})</span></div>
