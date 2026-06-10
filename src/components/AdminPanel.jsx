@@ -857,7 +857,7 @@ export default function AdminPanel() {
                   <th>器材名稱</th>
                   <th>廠牌</th>
                   <th>規格 / 型號</th>
-                  <th>總數量</th>
+                  <th>可借 / 總數量</th>
                   <th>狀態</th>
                   <th>操作</th>
                 </tr>
@@ -888,7 +888,22 @@ export default function AdminPanel() {
                         </td>
                         <td>{item.brand || 'N/A'}</td>
                         <td>{item.model || 'N/A'}</td>
-                        <td>{item.quantity} {item.unit || '具'}</td>
+                        <td>
+                          {(() => {
+                            const borrowedQty = requests
+                              .filter(r => r.resource_id === item.id && r.status === 'approved')
+                              .reduce((sum, r) => sum + (r.quantity || 1), 0);
+                            const availableQty = Math.max(0, item.quantity - borrowedQty);
+                            return (
+                              <>
+                                <span style={{ fontWeight: 700, color: availableQty === 0 ? 'var(--danger)' : 'inherit' }}>
+                                  {availableQty}
+                                </span>
+                                <span style={{ color: 'var(--text-muted)' }}> / {item.quantity} {item.unit || '具'}</span>
+                              </>
+                            );
+                          })()}
+                        </td>
                         <td>
                           <span className={`kanban-card-badge ${isActive ? 'kanban-badge-approved' : 'kanban-badge-rejected'}`}>
                             {isActive ? '上架中' : '已下架'}
