@@ -1252,10 +1252,7 @@ export default function AdminPanel() {
                   })}
                 </div>
                 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
-                  <button type="button" className="btn-secondary" onClick={() => setReturnModalOpen(false)}>
-                    取消
-                  </button>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
                   <button type="submit" className="btn-primary" style={{ background: 'var(--success)' }}>
                     確認歸還變更
                   </button>
