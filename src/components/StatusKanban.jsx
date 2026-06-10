@@ -230,12 +230,6 @@ export default function StatusKanban() {
                       品項數：{req.items.length}
                     </span>
                   </div>
-                  <div className="kanban-card-title">
-                    {req.items.length === 1 
-                      ? getResourceName(req.items[0].resource_id)
-                      : `${getResourceName(req.items[0].resource_id)} 等 ${req.items.length} 項`
-                    }
-                  </div>
                   <div className="kanban-card-detail">
                     <div>申請人：<span>{req.applicant_name} ({req.applicant_dept})</span></div>
                     <div>員工編號：<span>{req.applicant_emp_id}</span></div>
@@ -303,12 +297,6 @@ export default function StatusKanban() {
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       品項數：{req.items.length}
                     </span>
-                  </div>
-                  <div className="kanban-card-title">
-                    {req.items.length === 1 
-                      ? getResourceName(req.items[0].resource_id)
-                      : `${getResourceName(req.items[0].resource_id)} 等 ${req.items.length} 項`
-                    }
                   </div>
                   <div className="kanban-card-detail">
                     <div>借用人：<span>{req.applicant_name} ({req.applicant_dept})</span></div>
@@ -384,12 +372,6 @@ export default function StatusKanban() {
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       品項數：{req.items.length}
                     </span>
-                  </div>
-                  <div className="kanban-card-title">
-                    {req.items.length === 1 
-                      ? getResourceName(req.items[0].resource_id)
-                      : `${getResourceName(req.items[0].resource_id)} 等 ${req.items.length} 項`
-                    }
                   </div>
                   <div className="kanban-card-detail">
                     <div>申請人：<span>{req.applicant_name} ({req.applicant_dept})</span></div>
