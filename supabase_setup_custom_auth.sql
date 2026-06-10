@@ -6,16 +6,17 @@ CREATE TABLE IF NOT EXISTS admin_accounts (
     name TEXT NOT NULL,              -- Administrator Name
     emp_id TEXT NOT NULL,            -- Employee ID
     role TEXT NOT NULL CHECK (role IN ('general', 'system')), -- Roles: general or system
+    is_active BOOLEAN DEFAULT false, -- Account status: active (true) or inactive (false)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- 2. Insert Default Admin Seed Accounts
 -- Default System Admin: system@hospital.org.tw / system123
 -- Default General Admin: general@hospital.org.tw / general123
-INSERT INTO admin_accounts (email, password, name, emp_id, role)
+INSERT INTO admin_accounts (email, password, name, emp_id, role, is_active)
 VALUES 
-('system@hospital.org.tw', 'system123', '系統管理員', 'SYS001', 'system'),
-('general@hospital.org.tw', 'general123', '一般管理者', 'GEN001', 'general')
+('system@hospital.org.tw', 'system123', '系統管理員', 'SYS001', 'system', true),
+('general@hospital.org.tw', 'general123', '一般管理者', 'GEN001', 'general', true)
 ON CONFLICT (email) DO NOTHING;
 
 -- 3. Disable Row Level Security (RLS) on all tables to allow custom client-side database auth

@@ -245,6 +245,33 @@ export default function AdminPanel() {
     }
   };
 
+  const handleToggleActive = async (account) => {
+    if (account.email === session?.email) {
+      alert('無法停用或變更自己目前登入帳號的啟用狀態。');
+      return;
+    }
+    const newActive = !account.is_active;
+    const confirmMsg = `確定要將「${account.name}」的帳號狀態變更為【${newActive ? '已啟用 / 激活' : '未啟用 / 停用'}】嗎？`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setAccountsLoading(true);
+      const { error } = await supabase
+        .from('admin_accounts')
+        .update({ is_active: newActive })
+        .eq('id', account.id);
+
+      if (error) throw error;
+      alert(`帳號狀態變更成功！已設定為「${newActive ? '已啟用' : '已停用'}」。`);
+      await fetchAccounts();
+    } catch (err) {
+      console.error('Error updating account active status:', err);
+      alert('更新帳號啟用狀態失敗。');
+    } finally {
+      setAccountsLoading(false);
+    }
+  };
+
   const handleDeleteAccount = async (account) => {
     if (account.email === session?.email) {
       alert('無法刪除自己目前正在使用的帳號。');
@@ -368,7 +395,11 @@ export default function AdminPanel() {
         .single();
 
       if (error || !data) {
-        throw new Error('帳號或密碼錯誤');
+        throw new Error('credentials_error');
+      }
+
+      if (!data.is_active) {
+        throw new Error('activation_blocked');
       }
 
       const userSession = {
@@ -381,7 +412,11 @@ export default function AdminPanel() {
       setSession(userSession);
     } catch (err) {
       console.error('Login error:', err);
-      setLoginError('登入失敗，請確認信箱及密碼是否正確。');
+      if (err.message === 'activation_blocked') {
+        setLoginError('您的帳號尚未被系統管理員啟用（激活）。啟用後即可登入使用。');
+      } else {
+        setLoginError('登入失敗，請確認信箱及密碼是否正確。');
+      }
     } finally {
       setLoginLoading(false);
     }
@@ -414,11 +449,12 @@ export default function AdminPanel() {
           emp_id: regEmpId,
           email: regEmail,
           password: regPassword,
-          role: 'general' // Default newly registered users to general admin
+          role: 'general', // Default newly registered users to general admin
+          is_active: false // Explicitly set as false (inactive)
         });
 
       if (error) throw error;
-      setRegSuccess('帳號申請成功！您現在可以使用該帳密登入後台。');
+      setRegSuccess('帳號申請成功！此帳號預設為「未啟用」，請聯絡系統管理員進行啟用（激活）後方可登入。');
       
       setRegName('');
       setRegEmpId('');
@@ -1131,6 +1167,7 @@ export default function AdminPanel() {
                     <th>管理員姓名</th>
                     <th>員工編號</th>
                     <th>登入信箱</th>
+                    <th>帳號狀態</th>
                     <th>身分權限</th>
                     <th>註冊時間</th>
                     <th>操作</th>
@@ -1139,7 +1176,7 @@ export default function AdminPanel() {
                 <tbody>
                   {accountsLoading ? (
                     <tr>
-                      <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>
+                      <td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>
                         <div className="spinner" style={{ margin: '0 auto' }}></div>
                       </td>
                     </tr>
@@ -1148,7 +1185,7 @@ export default function AdminPanel() {
                     acc.email.toLowerCase().includes(accountsSearchQuery.toLowerCase())
                   ).length === 0 ? (
                     <tr>
-                      <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>無符合搜尋條件的管理者帳號</td>
+                      <td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>無符合搜尋條件的管理者帳號</td>
                     </tr>
                   ) : (
                     accounts
@@ -1167,6 +1204,11 @@ export default function AdminPanel() {
                             <td>{acc.emp_id}</td>
                             <td>{acc.email}</td>
                             <td>
+                              <span className={`kanban-card-badge ${acc.is_active ? 'kanban-badge-returned' : 'kanban-badge-rejected'}`}>
+                                {acc.is_active ? '已啟用' : '未啟用'}
+                              </span>
+                            </td>
+                            <td>
                               <span className={`kanban-card-badge ${acc.role === 'system' ? 'kanban-badge-approved' : 'kanban-badge-pending'}`}>
                                 {acc.role === 'system' ? '系統管理員' : '一般管理者'}
                               </span>
@@ -1181,6 +1223,23 @@ export default function AdminPanel() {
                                   style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
                                 >
                                   重設密碼
+                                </button>
+                                <button
+                                  className="btn-small"
+                                  title={acc.is_active ? "停用該帳號" : "啟用該帳號"}
+                                  onClick={() => handleToggleActive(acc)}
+                                  disabled={isSelf}
+                                  style={{
+                                    background: isSelf ? 'rgba(0,0,0,0.02)' : (acc.is_active ? 'rgba(239, 68, 68, 0.08)' : 'var(--success)'),
+                                    color: isSelf ? 'var(--text-muted)' : (acc.is_active ? 'var(--danger)' : '#fff'),
+                                    border: isSelf ? '1px solid var(--border-color)' : (acc.is_active ? '1px solid rgba(239, 68, 68, 0.2)' : 'none'),
+                                    opacity: isSelf ? 0.5 : 1,
+                                    padding: '0.25rem 0.5rem',
+                                    fontSize: '0.75rem',
+                                    cursor: isSelf ? 'not-allowed' : 'pointer'
+                                  }}
+                                >
+                                  {acc.is_active ? '停用帳號' : '啟用帳號'}
                                 </button>
                                 <button
                                   className="btn-small"
