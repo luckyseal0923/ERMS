@@ -1,0 +1,362 @@
+[
+  {
+    "id": 1,
+    "name": "褥瘡/燙傷傷口模型",
+    "quantity": 2,
+    "unit": "具",
+    "brand": "Laerdal",
+    "model": "VT-900",
+    "image": "images/item_1.jpg",
+    "remarks": "傷口部位"
+  },
+  {
+    "id": 2,
+    "name": "導尿管置放模型",
+    "quantity": 3,
+    "unit": "具",
+    "brand": "Laerdal",
+    "model": "375-21001",
+    "image": "images/item_2.jpg",
+    "remarks": "可置換配件，男/女導尿均可操作"
+  },
+  {
+    "id": 3,
+    "name": "傷口縫合模型",
+    "quantity": 7,
+    "unit": "具",
+    "brand": "Life/form",
+    "model": "LF01028U",
+    "image": "images/item_3.jpg",
+    "remarks": "可自行切割傷口"
+  },
+  {
+    "id": 4,
+    "name": "氣胸訓練模型",
+    "quantity": 1,
+    "unit": "具",
+    "brand": "Laerdal",
+    "model": "26005001",
+    "image": "images/item_4.jpg",
+    "remarks": "全身或半身"
+  },
+  {
+    "id": 5,
+    "name": "下肢穿刺模擬訓練模型",
+    "quantity": 1,
+    "unit": "具",
+    "brand": "Laerdal",
+    "model": "262-00001",
+    "image": "images/item_5.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 6,
+    "name": "脊椎穿刺模型",
+    "quantity": 1,
+    "unit": "具",
+    "brand": "Gaumard",
+    "model": "S411",
+    "image": "images/item_6.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 7,
+    "name": "氣管插管練習模型",
+    "quantity": 3,
+    "unit": "具",
+    "brand": "Laerdal",
+    "model": "250000",
+    "image": "images/item_7.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 8,
+    "name": "嬰兒氣道處理訓練模型",
+    "quantity": 2,
+    "unit": "具",
+    "brand": "Laerdal",
+    "model": "250-00250",
+    "image": "images/item_8.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 9,
+    "name": "鼻胃管置入練習模型",
+    "quantity": 2,
+    "unit": "具",
+    "brand": "Laerdal",
+    "model": "375-10001",
+    "image": "images/item_9.jpg",
+    "remarks": "可做氣切"
+  },
+  {
+    "id": 10,
+    "name": "靜脈軟針置入練習模型",
+    "quantity": 3,
+    "unit": "具",
+    "brand": "Laerdal",
+    "model": "270-00001",
+    "image": "images/item_10.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 11,
+    "name": "婦科內診檢查模型 (子宮頸抹片篩檢之操作)",
+    "quantity": 2,
+    "unit": "具",
+    "brand": "KOKEN",
+    "model": "LM-050",
+    "image": "images/item_11.jpg",
+    "remarks": "詳列附加道具明細"
+  },
+  {
+    "id": 12,
+    "name": "基本救命術 (BLS) 模型",
+    "quantity": 1,
+    "unit": "具",
+    "brand": "Laerdal",
+    "model": "310055",
+    "image": "images/item_12.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 13,
+    "name": "簡易燈號成人半身 CPR 模型",
+    "quantity": 2,
+    "unit": "具",
+    "brand": "Prestan",
+    "model": "PP-AM-100M-MS",
+    "image": "images/item_13.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 14,
+    "name": "半身中央及週邊靜脈導管照護模型",
+    "quantity": 2,
+    "unit": "具",
+    "brand": "Laerdal",
+    "model": "VT-400P",
+    "image": "images/item_14.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 15,
+    "name": "皮下注射模型",
+    "quantity": 2,
+    "unit": "具",
+    "brand": "Life/form",
+    "model": "LF01008U",
+    "image": "images/item_15.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 16,
+    "name": "肌肉注射模型",
+    "quantity": 2,
+    "unit": "具",
+    "brand": "Nasco",
+    "model": "LF01184U",
+    "image": "images/item_16.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 17,
+    "name": "眼底鏡病變判讀模型",
+    "quantity": 1,
+    "unit": "具",
+    "brand": "Adam,Rouilly",
+    "model": "AR303",
+    "image": "images/item_17.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 18,
+    "name": "耳道病變判讀模型",
+    "quantity": 1,
+    "unit": "具",
+    "brand": "Adam,Rouilly",
+    "model": "AR302",
+    "image": "images/item_18.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 19,
+    "name": "Mr. Hurt Trauma Head",
+    "quantity": 2,
+    "unit": "具",
+    "brand": "Laerdal",
+    "model": "261-02001",
+    "image": "images/item_19.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 20,
+    "name": "CVC 穿刺插入模擬裝置模型",
+    "quantity": 1,
+    "unit": "具",
+    "brand": "KYOTO KAGAKU",
+    "model": "M93B",
+    "image": "images/item_20.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 21,
+    "name": "半身中央靜脈訓練模型",
+    "quantity": 1,
+    "unit": "具",
+    "brand": "Laerdal",
+    "model": "IV Torso",
+    "image": "images/item_21.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 22,
+    "name": "高級心臟救命術訓練模型",
+    "quantity": 1,
+    "unit": "具",
+    "brand": "Laerdal",
+    "model": "Megacode Kelly",
+    "image": "images/item_22.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 23,
+    "name": "電子式動脈採血手臂",
+    "quantity": 2,
+    "unit": "具",
+    "brand": "潗大科技",
+    "model": "ARB-001",
+    "image": "images/item_23.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 24,
+    "name": "成人呼吸音及心音聽診練習模型",
+    "quantity": 1,
+    "unit": "具",
+    "brand": "",
+    "model": "",
+    "image": "images/item_24.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 25,
+    "name": "嬰兒",
+    "quantity": 1,
+    "unit": "具",
+    "brand": "Laerdal",
+    "model": "180011",
+    "image": "images/item_25.jpg",
+    "remarks": "全身/1歲"
+  },
+  {
+    "id": 26,
+    "name": "哽塞娃娃",
+    "quantity": 1,
+    "unit": "具",
+    "brand": "Laerdal",
+    "model": "Baby Anne",
+    "image": "images/item_26.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 27,
+    "name": "簡易嬰兒 QCPR",
+    "quantity": 2,
+    "unit": "具",
+    "brand": "Laerdal",
+    "model": "133-01050",
+    "image": "images/item_27.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 28,
+    "name": "新生兒急救模組",
+    "quantity": 1,
+    "unit": "具",
+    "brand": "Nasco",
+    "model": "LF01420",
+    "image": "images/item_28.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 29,
+    "name": "5 歲兒童護理假病人",
+    "quantity": 1,
+    "unit": "具",
+    "brand": "Gaumard",
+    "model": "S150",
+    "image": "images/item_29.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 30,
+    "name": "耳朵檢查模型",
+    "quantity": 1,
+    "unit": "具",
+    "brand": "KYOTO KAGAKU",
+    "model": "M88",
+    "image": "images/item_30.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 31,
+    "name": "肛門指診檢查模型",
+    "quantity": 1,
+    "unit": "具",
+    "brand": "",
+    "model": "SY-10402-PRO",
+    "image": "images/item_31.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 32,
+    "name": "乳房觸診模型",
+    "quantity": 1,
+    "unit": "具",
+    "brand": "Gaumard/美國製",
+    "model": "S230.40",
+    "image": "images/item_32.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 33,
+    "name": "氣道處理模型",
+    "quantity": 1,
+    "unit": "具",
+    "brand": "Gaumard",
+    "model": "S315",
+    "image": "images/item_33.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 34,
+    "name": "局部麻醉超音波穿刺訓練仿體",
+    "quantity": 2,
+    "unit": "具",
+    "brand": "3B",
+    "model": "1019637",
+    "image": "images/item_34.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 35,
+    "name": "行動訓練監護儀",
+    "quantity": 2,
+    "unit": "組",
+    "brand": "REALITi / Nasco",
+    "model": "",
+    "image": "images/item_35.jpg",
+    "remarks": ""
+  },
+  {
+    "id": 36,
+    "name": "超音波影像儀",
+    "quantity": 2,
+    "unit": "台",
+    "brand": "ASUS",
+    "model": "LU700",
+    "image": "images/item_36.jpg",
+    "remarks": ""
+  }
+]
