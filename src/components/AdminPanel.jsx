@@ -100,8 +100,6 @@ export default function AdminPanel() {
   const [regEmpId, setRegEmpId] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
-  const [regRole, setRegRole] = useState('general'); // general | system
-  const [regInvite, setRegInvite] = useState('');
   const [regLoading, setRegLoading] = useState(false);
   const [regError, setRegError] = useState('');
   const [regSuccess, setRegSuccess] = useState('');
@@ -394,11 +392,6 @@ export default function AdminPanel() {
     setRegError('');
     setRegSuccess('');
 
-    if (regInvite.trim() !== 'ERMS2026') {
-      setRegError('註冊邀請碼有誤，請洽教學部系統管理員取得。');
-      return;
-    }
-
     setRegLoading(true);
     try {
       const { data: existing, error: checkError } = await supabase
@@ -421,7 +414,7 @@ export default function AdminPanel() {
           emp_id: regEmpId,
           email: regEmail,
           password: regPassword,
-          role: regRole
+          role: 'general' // Default newly registered users to general admin
         });
 
       if (error) throw error;
@@ -431,8 +424,6 @@ export default function AdminPanel() {
       setRegEmpId('');
       setRegEmail('');
       setRegPassword('');
-      setRegInvite('');
-      setRegRole('general');
     } catch (err) {
       console.error('Register error:', err);
       setRegError(`申請失敗：${err.message || '請檢查資料欄位是否填寫正確。'}`);
@@ -777,31 +768,6 @@ export default function AdminPanel() {
                   onChange={(e) => setRegPassword(e.target.value)}
                   required
                 />
-              </div>
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label>管理權限角色 *</label>
-                <select
-                  className="input-field"
-                  value={regRole}
-                  onChange={(e) => setRegRole(e.target.value)}
-                  required
-                  style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-                >
-                  <option value="general">一般管理者</option>
-                  <option value="system">系統管理員</option>
-                </select>
-              </div>
-              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                <label>註冊邀請碼 * (預設: ERMS2026)</label>
-                <input
-                  type="text"
-                  className="input-field"
-                  placeholder="請輸入註冊邀請碼"
-                  value={regInvite}
-                  onChange={(e) => setRegInvite(e.target.value)}
-                  required
-                />
-                <span className="helper-text">為防止他人任意註冊，請輸入邀請碼 <strong>ERMS2026</strong></span>
               </div>
               {regError && <p className="error-text" style={{ marginBottom: '1rem' }}>{regError}</p>}
               {regSuccess && <p className="success-text" style={{ color: 'var(--success)', fontSize: '0.85rem', marginBottom: '1rem', lineHeight: '1.4' }}>{regSuccess}</p>}
