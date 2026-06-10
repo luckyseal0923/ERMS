@@ -297,13 +297,14 @@ export default function RequestPage() {
             const inCartQty = inCartItem ? inCartItem.quantity : 0;
             const remainingToBorrow = available - inCartQty;
 
+            const total = item.quantity;
             let badgeClass = 'badge-available';
-            let badgeText = '庫存充足';
+            let badgeText = '設備充足';
             
             if (available === 0) {
               badgeClass = 'badge-out';
-              badgeText = '無庫存';
-            } else if (available === 1) {
+              badgeText = '無可借用';
+            } else if (available / total <= 0.5) {
               badgeClass = 'badge-low';
               badgeText = '庫存緊張';
             }
