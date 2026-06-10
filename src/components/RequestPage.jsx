@@ -383,17 +383,26 @@ export default function RequestPage() {
                   ) : inCartQty === 0 ? (
                     <button className="card-btn" onClick={() => addToCart(item)}>加入租借車</button>
                   ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', overflow: 'hidden', height: '40px' }}>
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between', 
+                      background: 'rgba(14, 165, 233, 0.1)', 
+                      borderRadius: 'var(--radius-sm)', 
+                      border: '1px solid var(--primary)', 
+                      overflow: 'hidden', 
+                      height: '40px' 
+                    }}>
                       <button 
                         type="button"
                         className="cart-qty-btn" 
                         onClick={() => updateCartQty(item.id, -1)}
-                        style={{ width: '40px', height: '100%', borderRadius: 0, border: 'none', background: 'none' }}
+                        style={{ width: '40px', height: '100%', borderRadius: 0, border: 'none', background: 'none', color: 'var(--primary)' }}
                         title="減少數量"
                       >
                         <Minus size={14} />
                       </button>
-                      <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--primary-hover)', fontSize: '0.9rem' }}>
                         已選: {inCartQty} {item.unit || '具'}
                       </span>
                       <button 
@@ -401,7 +410,16 @@ export default function RequestPage() {
                         className="cart-qty-btn" 
                         onClick={() => updateCartQty(item.id, 1)}
                         disabled={remainingToBorrow <= 0}
-                        style={{ width: '40px', height: '100%', borderRadius: 0, border: 'none', background: 'none', cursor: remainingToBorrow <= 0 ? 'not-allowed' : 'pointer', opacity: remainingToBorrow <= 0 ? 0.5 : 1 }}
+                        style={{ 
+                          width: '40px', 
+                          height: '100%', 
+                          borderRadius: 0, 
+                          border: 'none', 
+                          background: 'none', 
+                          color: 'var(--primary)', 
+                          cursor: remainingToBorrow <= 0 ? 'not-allowed' : 'pointer', 
+                          opacity: remainingToBorrow <= 0 ? 0.3 : 1 
+                        }}
                         title="增加數量"
                       >
                         <Plus size={14} />
