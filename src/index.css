@@ -759,6 +759,7 @@ table {
 th, td {
   padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
 }
 
 th {

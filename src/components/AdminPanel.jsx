@@ -706,14 +706,26 @@ export default function AdminPanel() {
           <table>
             <thead>
               <tr>
-                <th>案件起單時間 / 案件編號</th>
-                <th>申請人及員工編號</th>
+                <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                  案件起單時間
+                  <br />
+                  <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: 'var(--text-muted)', textTransform: 'none', letterSpacing: 'normal' }}>
+                    案件編號
+                  </span>
+                </th>
+                <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                  申請人
+                  <br />
+                  <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: 'var(--text-muted)', textTransform: 'none', letterSpacing: 'normal' }}>
+                    員工編號
+                  </span>
+                </th>
                 <th>申請單位</th>
                 <th>手機及信箱</th>
                 <th>預借器材清單</th>
-                <th>預約借用日期</th>
-                <th>申請狀態</th>
-                <th>審核操作</th>
+                <th style={{ whiteSpace: 'nowrap', minWidth: '110px', verticalAlign: 'middle' }}>預約借用日期</th>
+                <th style={{ whiteSpace: 'nowrap', minWidth: '95px', verticalAlign: 'middle' }}>申請狀態</th>
+                <th style={{ whiteSpace: 'nowrap', minWidth: '110px', verticalAlign: 'middle' }}>審核操作</th>
               </tr>
             </thead>
             <tbody>
@@ -767,10 +779,10 @@ export default function AdminPanel() {
                           );
                         })}
                       </td>
-                      <td>
+                      <td style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                         <strong>{req.required_date}</strong>
                       </td>
-                      <td>
+                      <td style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                         <span className={`kanban-card-badge ${
                           req.status === 'pending' ? 'kanban-badge-pending' :
                           req.status === 'approved' ? 'kanban-badge-approved' :
@@ -783,7 +795,7 @@ export default function AdminPanel() {
                            req.status === 'returned' ? '已歸還' : '已拒絕'}
                         </span>
                       </td>
-                      <td>
+                      <td style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                         <div className="action-buttons">
                           {req.status === 'pending' && (
                             <>
