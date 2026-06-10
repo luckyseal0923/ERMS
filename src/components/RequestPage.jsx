@@ -116,8 +116,7 @@ export default function RequestPage() {
       }
     });
     
-    // Automatically open the cart sidebar to provide feedback to the user
-    setCartOpen(true);
+    // Add success feedback or just set checkout success to false
     setCheckoutSuccess(false);
   };
 
