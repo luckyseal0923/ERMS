@@ -2,6 +2,7 @@
 -- Copy and run this script in your Supabase SQL Editor: https://supabase.com/dashboard/project/vllipntxgdrlintgbguf/sql/new
 
 -- 1. Drop existing tables if they exist (Caution: this deletes data)
+-- IF YOU ALREADY RAN THE PREVIOUS SCRIPT, JUST RUN: ALTER TABLE teaching_aids ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
 DROP TABLE IF EXISTS borrow_requests CASCADE;
 DROP TABLE IF EXISTS teaching_aids CASCADE;
 
@@ -16,6 +17,7 @@ CREATE TABLE teaching_aids (
     remarks TEXT,
     unit TEXT DEFAULT '具',
     category TEXT,
+    is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { ShieldCheck, Plus, Trash2, Edit, Check, X, Undo2, Lock, LogOut } from 'lucide-react';
+import { ShieldCheck, Plus, Trash2, Edit, Check, X, Undo2, Lock, LogOut, ArrowDown, ArrowUp, Upload } from 'lucide-react';
 
 export default function AdminPanel() {
   const [session, setSession] = useState(null);
@@ -27,6 +27,12 @@ export default function AdminPanel() {
   const [requests, setRequests] = useState([]);
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // File upload state
+  const [uploading, setUploading] = useState(false);
+
+  // Lightbox state
+  const [lightboxImage, setLightboxImage] = useState(null);
 
   // Edit / Add modal states
   const [itemModalOpen, setItemModalOpen] = useState(false);
@@ -219,6 +225,55 @@ export default function AdminPanel() {
     }
   };
 
+  // Toggle active/inactive status (下架/上架)
+  const handleToggleActive = async (item) => {
+    try {
+      const newActiveState = item.is_active !== false ? false : true;
+      const { error } = await supabase
+        .from('teaching_aids')
+        .update({ is_active: newActiveState })
+        .eq('id', item.id);
+        
+      if (error) throw error;
+      await fetchAdminData();
+    } catch (err) {
+      console.error('Error toggling active state:', err);
+      alert('切換上下架狀態失敗，請確認資料表已新增 is_active 欄位。');
+    }
+  };
+
+  // Image Upload Handler
+  const handleImageUpload = async (e) => {
+    try {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      setUploading(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.floor(Math.random() * 1000)}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      // Upload file to bucket 'teaching-aids-images'
+      const { error: uploadError } = await supabase.storage
+        .from('teaching-aids-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data } = supabase.storage
+        .from('teaching-aids-images')
+        .getPublicUrl(filePath);
+
+      setItemForm(prev => ({ ...prev, image_url: data.publicUrl }));
+    } catch (err) {
+      console.error('Error uploading image:', err);
+      alert('圖片上傳失敗，請確認您的 Supabase Storage 建立了名為 "teaching-aids-images" 且訪問權限為 Public 的 Bucket。');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   // CRUD Item actions
   const handleOpenItemModal = (item = null) => {
     setSelectedItem(item);
@@ -277,7 +332,8 @@ export default function AdminPanel() {
             quantity: parseInt(itemForm.quantity),
             unit: itemForm.unit,
             remarks: itemForm.remarks,
-            image_url: itemForm.image_url || 'images/vite.svg'
+            image_url: itemForm.image_url || 'images/vite.svg',
+            is_active: true
           });
         if (error) throw error;
       }
@@ -290,7 +346,7 @@ export default function AdminPanel() {
   };
 
   const handleDeleteItem = async (itemId, itemName) => {
-    if (!window.confirm(`確定要下架/刪除器材「${itemName}」嗎？此操作無法還原。`)) return;
+    if (!window.confirm(`確定要【永久刪除】器材「${itemName}」嗎？（這將會同時刪除與其相關的所有歷史租借紀錄，建議使用【下架】功能即可）`)) return;
 
     try {
       const { error } = await supabase
@@ -599,56 +655,78 @@ export default function AdminPanel() {
                   <th>廠牌</th>
                   <th>規格 / 型號</th>
                   <th>總數量</th>
-                  <th>備註</th>
-                  <th>操作</th>
+                  <th>狀態</th>
+                  <th>上下架操作</th>
+                  <th>編輯/刪除</th>
                 </tr>
               </thead>
               <tbody>
                 {resources.length === 0 ? (
                   <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>暫無器材資料庫，請新增上架。</td>
+                    <td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>暫無器材資料庫，請新增上架。</td>
                   </tr>
                 ) : (
-                  resources.map(item => (
-                    <tr key={item.id}>
-                      <td style={{ color: 'var(--text-muted)' }}>{item.id}</td>
-                      <td style={{ fontWeight: 600 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <img
-                            src={item.image_url}
-                            alt=""
-                            style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', background: '#020617' }}
-                            onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=100'; }}
-                          />
-                          {item.name}
-                        </div>
-                      </td>
-                      <td>{item.brand || 'N/A'}</td>
-                      <td>{item.model || 'N/A'}</td>
-                      <td>{item.quantity} {item.unit || '具'}</td>
-                      <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.remarks}>
-                        {item.remarks || '--'}
-                      </td>
-                      <td>
-                        <div className="action-buttons">
+                  resources.map(item => {
+                    const isActive = item.is_active !== false;
+                    return (
+                      <tr key={item.id} style={{ opacity: isActive ? 1 : 0.6 }}>
+                        <td style={{ color: 'var(--text-muted)' }}>{item.id}</td>
+                        <td style={{ fontWeight: 600 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <img
+                              src={item.image_url}
+                              alt=""
+                              style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', background: '#f1f5f9', cursor: 'zoom-in' }}
+                              onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=100'; }}
+                              onClick={() => setLightboxImage(item.image_url)}
+                              title="點選放大圖片"
+                            />
+                            {item.name}
+                          </div>
+                        </td>
+                        <td>{item.brand || 'N/A'}</td>
+                        <td>{item.model || 'N/A'}</td>
+                        <td>{item.quantity} {item.unit || '具'}</td>
+                        <td>
+                          <span className={`kanban-card-badge ${isActive ? 'kanban-badge-approved' : 'kanban-badge-rejected'}`}>
+                            {isActive ? '上架中' : '已下架'}
+                          </span>
+                        </td>
+                        <td>
                           <button
-                            className="btn-icon"
-                            title="編輯器材資訊"
-                            onClick={() => handleOpenItemModal(item)}
+                            className="btn-small"
+                            onClick={() => handleToggleActive(item)}
+                            style={{ 
+                              background: isActive ? 'var(--bg-tertiary)' : 'var(--accent)', 
+                              color: isActive ? 'var(--text-primary)' : '#fff',
+                              borderColor: 'var(--border-color)'
+                            }}
                           >
-                            <Edit size={16} />
+                            {isActive ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
+                            {isActive ? '下架' : '上架'}
                           </button>
-                          <button
-                            className="btn-icon delete"
-                            title="下架此器材"
-                            onClick={() => handleDeleteItem(item.id, item.name)}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td>
+                          <div className="action-buttons">
+                            <button
+                              className="btn-icon"
+                              title="編輯器材資訊"
+                              onClick={() => handleOpenItemModal(item)}
+                            >
+                              <Edit size={16} />
+                            </button>
+                            <button
+                              className="btn-icon delete"
+                              title="永久刪除此器材（含租借歷史）"
+                              onClick={() => handleDeleteItem(item.id, item.name)}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -725,15 +803,54 @@ export default function AdminPanel() {
                   </div>
 
                   <div className="form-group full-width">
-                    <label>圖片相對路徑 (相對於 public 目錄) / URL</label>
-                    <input
-                      type="text"
-                      className="input-field"
-                      placeholder="例如: images/item_1.jpg 或 外部圖片 URL"
-                      value={itemForm.image_url}
-                      onChange={(e) => setItemForm({ ...itemForm, image_url: e.target.value })}
-                    />
-                    <span className="helper-text">留空時，系統會自動填入預設圖片。</span>
+                    <label>圖片上傳 (上傳至 Supabase Storage) *</label>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                      <label 
+                        className="btn-add" 
+                        style={{ 
+                          margin: 0, 
+                          background: 'var(--bg-tertiary)', 
+                          color: 'var(--text-primary)', 
+                          border: '1px solid var(--border-color)',
+                          cursor: uploading ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          padding: '0.75rem 1rem'
+                        }}
+                      >
+                        <Upload size={16} />
+                        {uploading ? '上傳中...' : '選擇本機圖片'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          disabled={uploading}
+                          style={{ display: 'none' }}
+                        />
+                      </label>
+                      
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="或輸入圖片路徑/網址..."
+                          value={itemForm.image_url}
+                          onChange={(e) => setItemForm({ ...itemForm, image_url: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    {itemForm.image_url && (
+                      <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--success)' }}>✓ 已設定圖片連結</span>
+                        <img 
+                          src={itemForm.image_url} 
+                          alt="" 
+                          style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border-color)' }} 
+                          onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=100'; }}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="form-group full-width">
@@ -748,7 +865,7 @@ export default function AdminPanel() {
                   </div>
                 </div>
 
-                <button type="submit" className="btn-primary">
+                <button type="submit" className="btn-primary" disabled={uploading}>
                   {selectedItem ? '確認修改' : '確認上架'}
                 </button>
               </form>
@@ -769,7 +886,7 @@ export default function AdminPanel() {
               <form onSubmit={handleRejectRequestSubmit}>
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
                   即將退回 <strong>{rejectingRequest?.applicant_name}</strong> 的租借申請：<br />
-                  <span style={{ color: '#fff' }}>{getResourceName(rejectingRequest?.resource_id)}</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{getResourceName(rejectingRequest?.resource_id)}</span>
                 </p>
                 <div className="form-group">
                   <label>退回原因 / 說明 *</label>
@@ -787,6 +904,26 @@ export default function AdminPanel() {
                 </button>
               </form>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Lightbox Modal */}
+      {lightboxImage && (
+        <div className="modal-overlay" onClick={() => setLightboxImage(null)} style={{ zIndex: 2000 }}>
+          <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }} onClick={(e) => e.stopPropagation()}>
+            <button 
+              onClick={() => setLightboxImage(null)} 
+              style={{ position: 'absolute', top: '-2.5rem', right: '0', background: 'none', border: 'none', color: '#fff', fontSize: '2rem', cursor: 'pointer' }}
+            >
+              &times;
+            </button>
+            <img 
+              src={lightboxImage} 
+              alt="Enlarged preview" 
+              style={{ width: '100%', height: 'auto', maxHeight: '80vh', objectFit: 'contain', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)' }} 
+              onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800'; }}
+            />
           </div>
         </div>
       )}

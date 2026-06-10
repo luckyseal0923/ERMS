@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Search, Filter, AlertCircle, CheckCircle2, ShoppingCart, Plus, Minus, Trash2, Calendar } from 'lucide-react';
+import { Search, AlertCircle, CheckCircle2, ShoppingCart, Plus, Minus, Trash2 } from 'lucide-react';
 
 export default function RequestPage() {
   const [resources, setResources] = useState([]);
@@ -16,6 +16,9 @@ export default function RequestPage() {
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  
+  // Lightbox state
+  const [lightboxImage, setLightboxImage] = useState(null);
   
   // Form state
   const [form, setForm] = useState({
@@ -116,7 +119,6 @@ export default function RequestPage() {
       }
     });
     
-    // Add success feedback or just set checkout success to false
     setCheckoutSuccess(false);
   };
 
@@ -219,18 +221,20 @@ export default function RequestPage() {
     }
   };
 
-  // Filter and search logic
-  const filteredResources = resources.filter(item => {
-    const matchesSearch = 
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.brand && item.brand.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (item.model && item.model.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (item.remarks && item.remarks.toLowerCase().includes(searchTerm.toLowerCase()));
+  // Filter and search logic (Only show is_active !== false)
+  const filteredResources = resources
+    .filter(item => item.is_active !== false)
+    .filter(item => {
+      const matchesSearch = 
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item.brand && item.brand.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.model && item.model.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.remarks && item.remarks.toLowerCase().includes(searchTerm.toLowerCase()));
+        
+      const matchesBrand = selectedBrand === '' || item.brand === selectedBrand;
       
-    const matchesBrand = selectedBrand === '' || item.brand === selectedBrand;
-    
-    return matchesSearch && matchesBrand;
-  });
+      return matchesSearch && matchesBrand;
+    });
 
   const brands = [...new Set(resources.map(r => r.brand).filter(Boolean))];
   const totalCartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -306,7 +310,12 @@ export default function RequestPage() {
 
             return (
               <div key={item.id} className="item-card">
-                <div className="card-image-wrapper">
+                <div 
+                  className="card-image-wrapper" 
+                  onClick={() => setLightboxImage(item.image_url)}
+                  style={{ cursor: 'zoom-in' }}
+                  title="點選放大圖片"
+                >
                   <img
                     className="card-image"
                     src={item.image_url || '/images/vite.svg'}
@@ -517,6 +526,9 @@ export default function RequestPage() {
                                 src={item.image_url}
                                 alt=""
                                 onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=100'; }}
+                                onClick={() => setLightboxImage(item.image_url)}
+                                style={{ cursor: 'zoom-in' }}
+                                title="點選放大圖片"
                               />
                               <div className="cart-item-info">
                                 <div className="cart-item-name">{item.name}</div>
@@ -524,8 +536,16 @@ export default function RequestPage() {
                                   廠牌: {item.brand || 'N/A'} | 型號: {item.model || 'N/A'}
                                 </div>
                                 <div className="cart-item-controls" style={{ marginTop: '0.5rem' }}>
-                                  <span className="cart-qty-val" style={{ marginRight: '0.5rem', fontSize: '0.85rem' }}>
-                                    申請數量: {item.quantity}
+                                  <button
+                                    type="button"
+                                    className="cart-qty-btn"
+                                    onClick={() => updateCartQty(item.id, -1)}
+                                    title="減少數量"
+                                  >
+                                    <Minus size={12} />
+                                  </button>
+                                  <span className="cart-qty-val" style={{ margin: '0 0.5rem', fontSize: '0.85rem' }}>
+                                    {item.quantity}
                                   </span>
                                   <button
                                     type="button"
@@ -567,6 +587,26 @@ export default function RequestPage() {
                 </>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Lightbox Modal */}
+      {lightboxImage && (
+        <div className="modal-overlay" onClick={() => setLightboxImage(null)} style={{ zIndex: 2000 }}>
+          <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }} onClick={(e) => e.stopPropagation()}>
+            <button 
+              onClick={() => setLightboxImage(null)} 
+              style={{ position: 'absolute', top: '-2.5rem', right: '0', background: 'none', border: 'none', color: '#fff', fontSize: '2rem', cursor: 'pointer' }}
+            >
+              &times;
+            </button>
+            <img 
+              src={lightboxImage} 
+              alt="Enlarged preview" 
+              style={{ width: '100%', height: 'auto', maxHeight: '80vh', objectFit: 'contain', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)' }} 
+              onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800'; }}
+            />
           </div>
         </div>
       )}
