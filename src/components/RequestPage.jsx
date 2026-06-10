@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Search, Filter, AlertCircle, CheckCircle2, ShoppingBag } from 'lucide-react';
+import { Search, Filter, AlertCircle, CheckCircle2, ShoppingCart, Plus, Minus, Trash2, Calendar } from 'lucide-react';
 
 export default function RequestPage() {
   const [resources, setResources] = useState([]);
@@ -11,10 +11,11 @@ export default function RequestPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('');
   
-  // Modal state
-  const [selectedItem, setSelectedItem] = useState(null);
+  // Cart state
+  const [cart, setCart] = useState([]);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [submitSuccess, setSubmitSuccess] = useState(false);
   
   // Form state
   const [form, setForm] = useState({
@@ -75,7 +76,6 @@ export default function RequestPage() {
         workingDaysAdded++;
       }
     }
-    // The date needs to be greater than 3 working days, so the day AFTER the 3rd working day.
     date.setDate(date.getDate() + 1);
     
     const yyyy = date.getFullYear();
@@ -84,18 +84,65 @@ export default function RequestPage() {
     return `${yyyy}-${mm}-${dd}`;
   };
 
-  const handleOpenBorrowModal = (item) => {
-    setSelectedItem(item);
-    setForm({
-      name: '',
-      phone: '',
-      empId: '',
-      dept: '',
-      email: '',
-      requiredDate: ''
+  // Cart Functions
+  const addToCart = (item) => {
+    const available = getAvailableQty(item);
+    if (available <= 0) return;
+
+    setCart(prevCart => {
+      const existing = prevCart.find(cartItem => cartItem.id === item.id);
+      if (existing) {
+        // Enforce stock limit
+        if (existing.quantity >= available) {
+          alert(`已達庫存上限：該教具目前可借用數量為 ${available} ${item.unit || '具'}`);
+          return prevCart;
+        }
+        return prevCart.map(cartItem =>
+          cartItem.id === item.id
+            ? { ...cartItem, quantity: cartItem.quantity + 1 }
+            : cartItem
+        );
+      } else {
+        return [...prevCart, {
+          id: item.id,
+          name: item.name,
+          brand: item.brand,
+          model: item.model,
+          unit: item.unit || '具',
+          image_url: item.image_url,
+          quantity: 1,
+          maxAvailable: available
+        }];
+      }
     });
-    setErrors({});
-    setSubmitSuccess(false);
+    
+    // Automatically open the cart sidebar to provide feedback to the user
+    setCartOpen(true);
+    setCheckoutSuccess(false);
+  };
+
+  const removeFromCart = (itemId) => {
+    setCart(prevCart => prevCart.filter(item => item.id !== itemId));
+  };
+
+  const updateCartQty = (itemId, change) => {
+    setCart(prevCart => {
+      return prevCart.map(item => {
+        if (item.id === itemId) {
+          const newQty = item.quantity + change;
+          if (newQty <= 0) {
+            // Remove item if quantity goes to 0
+            return null;
+          }
+          if (newQty > item.maxAvailable) {
+            alert(`已達庫存上限：該教具目前可借用數量為 ${item.maxAvailable} ${item.unit}`);
+            return item;
+          }
+          return { ...item, quantity: newQty };
+        }
+        return item;
+      }).filter(Boolean);
+    });
   };
 
   const validateForm = () => {
@@ -120,7 +167,6 @@ export default function RequestPage() {
     } else {
       const selected = new Date(form.requiredDate);
       const minDate = new Date(getMinSelectableDate());
-      // Reset hours to compare dates only
       selected.setHours(0,0,0,0);
       minDate.setHours(0,0,0,0);
       if (selected < minDate) {
@@ -132,32 +178,42 @@ export default function RequestPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
+  const handleCheckoutSubmit = async (e) => {
     e.preventDefault();
+    if (cart.length === 0) {
+      alert('您的租借車是空的，請先加入器材。');
+      return;
+    }
     if (!validateForm()) return;
 
     try {
       setSubmitting(true);
+      
+      // Batch insert into borrow_requests
+      const inserts = cart.map(item => ({
+        resource_id: item.id,
+        applicant_name: form.name,
+        applicant_phone: form.phone,
+        applicant_emp_id: form.empId,
+        applicant_dept: form.dept,
+        applicant_email: form.email,
+        required_date: form.requiredDate,
+        quantity: item.quantity,
+        status: 'pending'
+      }));
+
       const { error } = await supabase
         .from('borrow_requests')
-        .insert({
-          resource_id: selectedItem.id,
-          applicant_name: form.name,
-          applicant_phone: form.phone,
-          applicant_emp_id: form.empId,
-          applicant_dept: form.dept,
-          applicant_email: form.email,
-          required_date: form.requiredDate,
-          quantity: 1,
-          status: 'pending'
-        });
+        .insert(inserts);
 
       if (error) throw error;
-      setSubmitSuccess(true);
-      // Refresh requests to update UI quantities immediately
+      
+      setCheckoutSuccess(true);
+      setCart([]); // Clear cart
+      // Refresh requests data
       await fetchData();
     } catch (err) {
-      console.error('Error submitting request:', err);
+      console.error('Error submitting batch request:', err);
       alert('提交申請失敗，請稍後再試。');
     } finally {
       setSubmitting(false);
@@ -177,8 +233,8 @@ export default function RequestPage() {
     return matchesSearch && matchesBrand;
   });
 
-  // Extract unique brands for filter dropdown
   const brands = [...new Set(resources.map(r => r.brand).filter(Boolean))];
+  const totalCartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   if (loading && resources.length === 0) {
     return (
@@ -193,11 +249,10 @@ export default function RequestPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
         <h1>器材租借申請</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          <ShoppingBag size={16} />
           <span>共有 {filteredResources.length} 款器材可供選擇</span>
         </div>
       </div>
-      <p className="subtitle">選擇您需要借用的臨床技能教具，填寫申請表單。請注意：借用申請須提前至少三個工作天提交。</p>
+      <p className="subtitle">選擇您需要借用的臨床技能教具，點擊「加入租借車」。完成選擇後，點擊右下角租借車填寫資料一次送出。</p>
 
       {/* Search & Filter Bar */}
       <div className="search-filter-bar">
@@ -232,9 +287,13 @@ export default function RequestPage() {
           <p>請嘗試其他搜尋字詞或重設廠牌篩選器。</p>
         </div>
       ) : (
-        <div className="cards-grid">
+        <div className="cards-grid" style={{ marginBottom: '5rem' }}>
           {filteredResources.map(item => {
             const available = getAvailableQty(item);
+            const inCartItem = cart.find(c => c.id === item.id);
+            const inCartQty = inCartItem ? inCartItem.quantity : 0;
+            const remainingToBorrow = available - inCartQty;
+
             let badgeClass = 'badge-available';
             let badgeText = '庫存充足';
             
@@ -277,6 +336,11 @@ export default function RequestPage() {
                         {available} / {item.quantity} {item.unit}
                       </span>
                     </div>
+                    {inCartQty > 0 && (
+                      <div style={{ color: 'var(--primary)', fontWeight: 600, fontSize: '0.85rem' }}>
+                        租借車中已加入: {inCartQty} {item.unit}
+                      </div>
+                    )}
                     {item.remarks && (
                       <div style={{ marginTop: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8rem', display: 'block' }}>
                         <strong>備註:</strong> {item.remarks}
@@ -285,10 +349,11 @@ export default function RequestPage() {
                   </div>
                   <button
                     className="card-btn"
-                    disabled={available === 0}
-                    onClick={() => handleOpenBorrowModal(item)}
+                    disabled={remainingToBorrow <= 0}
+                    onClick={() => addToCart(item)}
+                    style={inCartQty > 0 && remainingToBorrow > 0 ? { background: 'var(--primary-glow)', color: 'var(--primary)' } : {}}
                   >
-                    {available === 0 ? '目前無庫存' : '申請租借'}
+                    {available === 0 ? '目前無庫存' : remainingToBorrow <= 0 ? '已達借用上限' : inCartQty > 0 ? '繼續加入租借車' : '加入租借車'}
                   </button>
                 </div>
               </div>
@@ -297,119 +362,189 @@ export default function RequestPage() {
         </div>
       )}
 
-      {/* Borrow Request Modal */}
-      {selectedItem && (
-        <div className="modal-overlay" onClick={() => setSelectedItem(null)}>
-          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 style={{ fontSize: '1.25rem' }}>教具租借申請表</h3>
-              <button className="modal-close" onClick={() => setSelectedItem(null)}>
+      {/* Floating Cart Button */}
+      <button 
+        className={`cart-floating-btn ${totalCartItemsCount > 0 ? 'pulse' : ''}`}
+        onClick={() => {
+          setCartOpen(true);
+          setCheckoutSuccess(false);
+        }}
+        title="查看租借車"
+      >
+        <ShoppingCart size={28} />
+        {totalCartItemsCount > 0 && (
+          <span className="cart-btn-badge">{totalCartItemsCount}</span>
+        )}
+      </button>
+
+      {/* Cart Sidebar Panel */}
+      {cartOpen && (
+        <div className="cart-sidebar-overlay" onClick={() => setCartOpen(false)}>
+          <div className="cart-sidebar" onClick={(e) => e.stopPropagation()}>
+            <div className="cart-sidebar-header">
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ShoppingCart size={22} style={{ color: 'var(--primary)' }} />
+                租借申請車
+              </h3>
+              <button className="modal-close" onClick={() => setCartOpen(false)} style={{ fontSize: '1.5rem' }}>
                 &times;
               </button>
             </div>
             
-            <div className="modal-body">
-              {submitSuccess ? (
-                <div className="empty-state" style={{ padding: '2rem 0' }}>
+            <div className="cart-sidebar-body">
+              {checkoutSuccess ? (
+                /* SUCCESS SCREEN */
+                <div className="empty-state" style={{ padding: '3rem 0' }}>
                   <CheckCircle2 size={64} style={{ color: 'var(--success)' }} />
-                  <h2>申請成功！</h2>
-                  <p style={{ margin: '1rem 0' }}>您對 <strong>{selectedItem.name}</strong> 的租借申請已成功送出。</p>
-                  <p className="helper-text">請耐心等待教學部管理員審核。您可前往「租借狀態看板」查看目前申請狀態。</p>
-                  <button className="btn-primary" style={{ width: 'auto', padding: '0.75rem 2rem' }} onClick={() => setSelectedItem(null)}>
+                  <h2>租借申請成功！</h2>
+                  <p style={{ margin: '1rem 0', lineHeight: '1.4' }}>您的批量租借申請已成功提交至教學部。</p>
+                  <p className="helper-text" style={{ marginBottom: '2rem' }}>請等待管理人員審核。您可切換至「租借狀態看板」查詢處理進度。</p>
+                  <button className="btn-primary" onClick={() => setCartOpen(false)}>
                     關閉視窗
                   </button>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit}>
-                  <div style={{ background: 'var(--bg-primary)', padding: '1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem', borderLeft: '3px solid var(--primary)' }}>
-                    <h4 style={{ color: '#fff', marginBottom: '0.25rem' }}>您選擇的器材：</h4>
-                    <p style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--primary)' }}>{selectedItem.name}</p>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                      廠牌: {selectedItem.brand || 'N/A'} | 規格/型號: {selectedItem.model || 'N/A'}
-                    </p>
+                /* CHECKOUT FORM & ITEMS */
+                <>
+                  <div className="cart-items-section">
+                    <h4 style={{ color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+                      已選擇器材 ({cart.length} 款)
+                    </h4>
+                    
+                    {cart.length === 0 ? (
+                      <div className="empty-state" style={{ padding: '2rem 1rem', fontSize: '0.9rem' }}>
+                        <ShoppingCart size={32} />
+                        <p>租借車目前是空的</p>
+                        <span className="helper-text">請先將器材「加入租借車」</span>
+                      </div>
+                    ) : (
+                      cart.map(item => (
+                        <div key={item.id} className="cart-item-row">
+                          <img
+                            className="cart-item-thumb"
+                            src={item.image_url}
+                            alt=""
+                            onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=100'; }}
+                          />
+                          <div className="cart-item-info">
+                            <div className="cart-item-name">{item.name}</div>
+                            <div className="cart-item-desc">
+                              廠牌: {item.brand || 'N/A'} | 型號: {item.model || 'N/A'}
+                            </div>
+                            <div className="cart-item-controls">
+                              <button className="cart-qty-btn" onClick={() => updateCartQty(item.id, -1)}>
+                                <Minus size={12} />
+                              </button>
+                              <span className="cart-qty-val">{item.quantity}</span>
+                              <button className="cart-qty-btn" onClick={() => updateCartQty(item.id, 1)}>
+                                <Plus size={12} />
+                              </button>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.25rem' }}>
+                                (庫存剩餘: {item.maxAvailable})
+                              </span>
+                            </div>
+                          </div>
+                          <button className="cart-remove-btn" onClick={() => removeFromCart(item.id)} title="移除器材">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))
+                    )}
                   </div>
 
-                  <div className="form-grid">
-                    <div className="form-group">
-                      <label>姓名 *</label>
-                      <input
-                        type="text"
-                        className="input-field"
-                        placeholder="請輸入姓名"
-                        value={form.name}
-                        onChange={(e) => setForm({ ...form, name: e.target.value })}
-                      />
-                      {errors.name && <span className="error-text">{errors.name}</span>}
-                    </div>
+                  {cart.length > 0 && (
+                    <form onSubmit={handleCheckoutSubmit} style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
+                      <h4 style={{ color: '#fff', marginBottom: '1rem' }}>申請人基本資料</h4>
+                      
+                      <div className="form-grid" style={{ gridTemplateColumns: '1fr' }}>
+                        <div className="form-group">
+                          <label>姓名 *</label>
+                          <input
+                            type="text"
+                            className="input-field"
+                            placeholder="請輸入姓名"
+                            value={form.name}
+                            onChange={(e) => setForm({ ...form, name: e.target.value })}
+                            required
+                          />
+                          {errors.name && <span className="error-text">{errors.name}</span>}
+                        </div>
 
-                    <div className="form-group">
-                      <label>手機電話 *</label>
-                      <input
-                        type="text"
-                        className="input-field"
-                        placeholder="例如: 0912345678"
-                        value={form.phone}
-                        onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                      />
-                      {errors.phone && <span className="error-text">{errors.phone}</span>}
-                    </div>
+                        <div className="form-group">
+                          <label>手機電話 *</label>
+                          <input
+                            type="text"
+                            className="input-field"
+                            placeholder="例如: 0912345678"
+                            value={form.phone}
+                            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                            required
+                          />
+                          {errors.phone && <span className="error-text">{errors.phone}</span>}
+                        </div>
 
-                    <div className="form-group">
-                      <label>員工編號 *</label>
-                      <input
-                        type="text"
-                        className="input-field"
-                        placeholder="請輸入員工編號"
-                        value={form.empId}
-                        onChange={(e) => setForm({ ...form, empId: e.target.value })}
-                      />
-                      {errors.empId && <span className="error-text">{errors.empId}</span>}
-                    </div>
+                        <div className="form-group">
+                          <label>員工編號 *</label>
+                          <input
+                            type="text"
+                            className="input-field"
+                            placeholder="請輸入員工編號"
+                            value={form.empId}
+                            onChange={(e) => setForm({ ...form, empId: e.target.value })}
+                            required
+                          />
+                          {errors.empId && <span className="error-text">{errors.empId}</span>}
+                        </div>
 
-                    <div className="form-group">
-                      <label>申請單位 *</label>
-                      <input
-                        type="text"
-                        className="input-field"
-                        placeholder="例如: 急診醫學部"
-                        value={form.dept}
-                        onChange={(e) => setForm({ ...form, dept: e.target.value })}
-                      />
-                      {errors.dept && <span className="error-text">{errors.dept}</span>}
-                    </div>
+                        <div className="form-group">
+                          <label>申請單位 *</label>
+                          <input
+                            type="text"
+                            className="input-field"
+                            placeholder="例如: 急診醫學部"
+                            value={form.dept}
+                            onChange={(e) => setForm({ ...form, dept: e.target.value })}
+                            required
+                          />
+                          {errors.dept && <span className="error-text">{errors.dept}</span>}
+                        </div>
 
-                    <div className="form-group full-width">
-                      <label>電子信箱 *</label>
-                      <input
-                        type="email"
-                        className="input-field"
-                        placeholder="例如: applicant@hospital.org.tw"
-                        value={form.email}
-                        onChange={(e) => setForm({ ...form, email: e.target.value })}
-                      />
-                      {errors.email && <span className="error-text">{errors.email}</span>}
-                    </div>
+                        <div className="form-group">
+                          <label>電子信箱 *</label>
+                          <input
+                            type="email"
+                            className="input-field"
+                            placeholder="例如: applicant@hospital.org.tw"
+                            value={form.email}
+                            onChange={(e) => setForm({ ...form, email: e.target.value })}
+                            required
+                          />
+                          {errors.email && <span className="error-text">{errors.email}</span>}
+                        </div>
 
-                    <div className="form-group full-width">
-                      <label>需求日期 * (需大於三個工作天)</label>
-                      <input
-                        type="date"
-                        className="input-field"
-                        min={getMinSelectableDate()}
-                        value={form.requiredDate}
-                        onChange={(e) => setForm({ ...form, requiredDate: e.target.value })}
-                      />
-                      <span className="helper-text">
-                        配合行政流程，預約日期須至少排除今天起算 3 個工作天（六日不計）。目前最早可預約日期：{getMinSelectableDate()}
-                      </span>
-                      {errors.requiredDate && <span className="error-text">{errors.requiredDate}</span>}
-                    </div>
-                  </div>
+                        <div className="form-group">
+                          <label>需求日期 * (需大於三個工作天)</label>
+                          <input
+                            type="date"
+                            className="input-field"
+                            min={getMinSelectableDate()}
+                            value={form.requiredDate}
+                            onChange={(e) => setForm({ ...form, requiredDate: e.target.value })}
+                            required
+                          />
+                          <span className="helper-text" style={{ fontSize: '0.75rem' }}>
+                            排除今天起算 3 個工作天（六日不計）。最早可預約日期：{getMinSelectableDate()}
+                          </span>
+                          {errors.requiredDate && <span className="error-text">{errors.requiredDate}</span>}
+                        </div>
+                      </div>
 
-                  <button type="submit" className="btn-primary" disabled={submitting}>
-                    {submitting ? '提交中...' : '送出租借申請'}
-                  </button>
-                </form>
+                      <button type="submit" className="btn-primary" disabled={submitting} style={{ marginTop: '1.5rem' }}>
+                        {submitting ? '提交申請中...' : `確認並一次送出 (${cart.length} 項器材)`}
+                      </button>
+                    </form>
+                  )}
+                </>
               )}
             </div>
           </div>
