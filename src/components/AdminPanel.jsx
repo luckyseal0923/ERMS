@@ -886,14 +886,14 @@ export default function AdminPanel() {
                   </span>
                 </th>
                 <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                  申請人
+                  申請人 / 單位
                   <br />
                   <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: 'var(--text-muted)', textTransform: 'none', letterSpacing: 'normal' }}>
                     員工編號
                   </span>
                 </th>
-                <th>單位 / 課程 / 對象</th>
                 <th>手機及信箱</th>
+                <th>課程 / 對象</th>
                 <th>預借器材清單</th>
                 <th style={{ whiteSpace: 'nowrap', minWidth: '110px', verticalAlign: 'middle' }}>預約借用日期</th>
                 <th style={{ whiteSpace: 'nowrap', minWidth: '95px', verticalAlign: 'middle' }}>申請狀態</th>
@@ -919,17 +919,18 @@ export default function AdminPanel() {
                       </td>
                       <td>
                         <div style={{ fontWeight: 600 }}>{req.applicant_name}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>工號: {req.applicant_emp_id}</div>
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: 600 }}>{req.applicant_dept}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                          課程/對象: {req.course_name || '無'} / {req.target_audience || '無'}
-                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>{req.applicant_dept}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>工號: {req.applicant_emp_id}</div>
                       </td>
                       <td>
                         <div>{req.applicant_phone}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{req.applicant_email}</div>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{req.course_name || '無'}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          對象: {req.target_audience || '無'}
+                        </div>
                       </td>
                       <td>
                         {req.items.map((item, idx) => {
