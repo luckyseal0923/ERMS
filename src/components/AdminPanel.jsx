@@ -892,7 +892,7 @@ export default function AdminPanel() {
                     員工編號
                   </span>
                 </th>
-                <th>申請單位</th>
+                <th>單位 / 課程 / 對象</th>
                 <th>手機及信箱</th>
                 <th>預借器材清單</th>
                 <th style={{ whiteSpace: 'nowrap', minWidth: '110px', verticalAlign: 'middle' }}>預約借用日期</th>
@@ -924,10 +924,7 @@ export default function AdminPanel() {
                       <td>
                         <div style={{ fontWeight: 600 }}>{req.applicant_dept}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                          課程: {req.course_name || '無'}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          對象: {req.target_audience || '無'}
+                          課程/對象: {req.course_name || '無'} / {req.target_audience || '無'}
                         </div>
                       </td>
                       <td>
