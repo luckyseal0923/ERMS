@@ -780,8 +780,12 @@ tr:last-child td {
   border-bottom: none;
 }
 
+tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
 tr:hover td {
-  background: rgba(15, 23, 42, 0.01);
+  background: rgba(15, 23, 42, 0.02);
 }
 
 .btn-icon {
