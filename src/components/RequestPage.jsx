@@ -533,7 +533,7 @@ export default function RequestPage() {
                           申請人基本資料
                         </h4>
                         
-                        <div className="form-grid" style={{ gridTemplateColumns: '1fr', gap: '1rem' }}>
+                        <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                           <div className="form-group">
                             <label>姓名 *</label>
                             <input
@@ -565,7 +565,7 @@ export default function RequestPage() {
                             <input
                               type="text"
                               className="input-field"
-                              placeholder="請輸入員工編號"
+                              placeholder="請輸入工號"
                               value={form.empId}
                               onChange={(e) => setForm({ ...form, empId: e.target.value })}
                               required
@@ -586,7 +586,7 @@ export default function RequestPage() {
                             {errors.dept && <span className="error-text">{errors.dept}</span>}
                           </div>
 
-                          <div className="form-group">
+                          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                             <label>電子信箱 *</label>
                             <input
                               type="email"
@@ -597,22 +597,6 @@ export default function RequestPage() {
                               required
                             />
                             {errors.email && <span className="error-text">{errors.email}</span>}
-                          </div>
-
-                          <div className="form-group" style={{ marginBottom: '0.5rem' }}>
-                            <label>需求日期 * (需大於三個工作天)</label>
-                            <input
-                              type="date"
-                              className="input-field"
-                              min={getMinSelectableDate()}
-                              value={form.requiredDate}
-                              onChange={(e) => setForm({ ...form, requiredDate: e.target.value })}
-                              required
-                            />
-                            <span className="helper-text" style={{ fontSize: '0.75rem' }}>
-                              排除今天起算 3 個工作天（六日不計）。最早可預約日期：{getMinSelectableDate()}
-                            </span>
-                            {errors.requiredDate && <span className="error-text">{errors.requiredDate}</span>}
                           </div>
 
                           <div className="form-group">
@@ -633,12 +617,28 @@ export default function RequestPage() {
                             <input
                               type="text"
                               className="input-field"
-                              placeholder="例如: 實習醫學生、住院醫師"
+                              placeholder="例如: 實習醫學生"
                               value={form.targetAudience}
                               onChange={(e) => setForm({ ...form, targetAudience: e.target.value })}
                               required
                             />
                             {errors.targetAudience && <span className="error-text">{errors.targetAudience}</span>}
+                          </div>
+
+                          <div className="form-group" style={{ marginBottom: '0.5rem' }}>
+                            <label>需求日期 *</label>
+                            <input
+                              type="date"
+                              className="input-field"
+                              min={getMinSelectableDate()}
+                              value={form.requiredDate}
+                              onChange={(e) => setForm({ ...form, requiredDate: e.target.value })}
+                              required
+                            />
+                            <span className="helper-text" style={{ fontSize: '0.7rem' }}>
+                              最早可借: {getMinSelectableDate()}
+                            </span>
+                            {errors.requiredDate && <span className="error-text">{errors.requiredDate}</span>}
                           </div>
 
                           <div className="form-group" style={{ marginBottom: '0.5rem' }}>
@@ -651,6 +651,7 @@ export default function RequestPage() {
                               onChange={(e) => setForm({ ...form, expectedReturnDate: e.target.value })}
                               required
                             />
+                            <span className="helper-text" style={{ fontSize: '0.7rem', opacity: 0 }}>保持對齊</span>
                             {errors.expectedReturnDate && <span className="error-text">{errors.expectedReturnDate}</span>}
                           </div>
                         </div>
