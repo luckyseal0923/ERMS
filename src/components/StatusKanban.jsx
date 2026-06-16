@@ -31,6 +31,9 @@ const groupRequests = (reqs) => {
         applicant_emp_id: req.applicant_emp_id,
         applicant_dept: req.applicant_dept,
         applicant_email: req.applicant_email,
+        course_name: req.course_name,
+        target_audience: req.target_audience,
+        expected_return_date: req.expected_return_date,
         created_at: req.created_at,
         required_date: req.required_date,
         status: req.status,
@@ -230,10 +233,11 @@ export default function StatusKanban() {
                       品項數：{req.items.length}
                     </span>
                   </div>
-                  <div className="kanban-card-detail">
-                    <div>申請人：<span>{req.applicant_name} ({req.applicant_dept})</span></div>
-                    <div>員工編號：<span>{req.applicant_emp_id}</span></div>
-                    <div>需求日期：<span>{req.required_date}</span></div>
+                    <div className="kanban-card-detail">
+                      <div>申請人：<span>{req.applicant_name} ({req.applicant_dept})</span></div>
+                      <div>課程/對象：<span>{req.course_name || '無'} / {req.target_audience || '無'}</span></div>
+                      <div>需求日期：<span>{req.required_date}</span></div>
+                      <div>預計歸還：<span>{req.expected_return_date || '未定'}</span></div>
                     
                     {/* Item list detail */}
                     <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border-color)' }}>
@@ -300,8 +304,9 @@ export default function StatusKanban() {
                   </div>
                   <div className="kanban-card-detail">
                     <div>借用人：<span>{req.applicant_name} ({req.applicant_dept})</span></div>
-                    <div>員工編號：<span>{req.applicant_emp_id}</span></div>
+                    <div>課程/對象：<span>{req.course_name || '無'} / {req.target_audience || '無'}</span></div>
                     <div>借用日期：<span>{req.required_date}</span></div>
+                    <div>預計歸還：<span>{req.expected_return_date || '未定'}</span></div>
                     
                     {/* Item list detail */}
                     <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border-color)' }}>
@@ -375,7 +380,9 @@ export default function StatusKanban() {
                   </div>
                   <div className="kanban-card-detail">
                     <div>申請人：<span>{req.applicant_name} ({req.applicant_dept})</span></div>
+                    <div>課程/對象：<span>{req.course_name || '無'} / {req.target_audience || '無'}</span></div>
                     <div>需求日期：<span>{req.required_date}</span></div>
+                    <div>預計歸還：<span>{req.expected_return_date || '未定'}</span></div>
                     {req.status === 'rejected' && req.reject_reason && (
                       <div style={{ color: 'var(--danger)', fontSize: '0.75rem', marginTop: '0.25rem' }}>
                         拒絕原因：{req.reject_reason}

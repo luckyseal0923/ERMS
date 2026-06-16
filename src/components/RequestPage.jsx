@@ -45,7 +45,10 @@ export default function RequestPage() {
     empId: '',
     dept: '',
     email: '',
-    requiredDate: ''
+    requiredDate: '',
+    courseName: '',
+    targetAudience: '',
+    expectedReturnDate: ''
   });
   const [errors, setErrors] = useState({});
 
@@ -193,6 +196,14 @@ export default function RequestPage() {
       }
     }
 
+    if (!form.courseName.trim()) newErrors.courseName = '請輸入課程名稱';
+    if (!form.targetAudience.trim()) newErrors.targetAudience = '請輸入使用對象';
+    if (!form.expectedReturnDate) {
+      newErrors.expectedReturnDate = '請選擇預計歸還日期';
+    } else if (form.requiredDate && new Date(form.expectedReturnDate) < new Date(form.requiredDate)) {
+      newErrors.expectedReturnDate = '歸還日期不能早於需求日期';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -217,6 +228,9 @@ export default function RequestPage() {
         applicant_dept: form.dept,
         applicant_email: form.email,
         required_date: form.requiredDate,
+        course_name: form.courseName,
+        target_audience: form.targetAudience,
+        expected_return_date: form.expectedReturnDate,
         quantity: item.quantity,
         status: 'pending'
       }));
@@ -230,6 +244,24 @@ export default function RequestPage() {
       
       if (data) {
         setSubmittedIds(data.map(r => r.id));
+        
+        // Trigger webhook
+        try {
+          await fetch('https://n8nwfh.zeabur.app/webhook/order_bulid', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              request_ids: data.map(r => r.id),
+              applicant: form,
+              items: cart
+            })
+          });
+        } catch (webhookErr) {
+          console.error('Webhook trigger failed:', webhookErr);
+          // Continue execution even if webhook fails
+        }
       }
       setCheckoutSuccess(true);
       setCart([]); // Clear cart
@@ -581,6 +613,45 @@ export default function RequestPage() {
                               排除今天起算 3 個工作天（六日不計）。最早可預約日期：{getMinSelectableDate()}
                             </span>
                             {errors.requiredDate && <span className="error-text">{errors.requiredDate}</span>}
+                          </div>
+
+                          <div className="form-group">
+                            <label>課程名稱 *</label>
+                            <input
+                              type="text"
+                              className="input-field"
+                              placeholder="請輸入課程名稱"
+                              value={form.courseName}
+                              onChange={(e) => setForm({ ...form, courseName: e.target.value })}
+                              required
+                            />
+                            {errors.courseName && <span className="error-text">{errors.courseName}</span>}
+                          </div>
+
+                          <div className="form-group">
+                            <label>使用對象 *</label>
+                            <input
+                              type="text"
+                              className="input-field"
+                              placeholder="例如: 實習醫學生、住院醫師"
+                              value={form.targetAudience}
+                              onChange={(e) => setForm({ ...form, targetAudience: e.target.value })}
+                              required
+                            />
+                            {errors.targetAudience && <span className="error-text">{errors.targetAudience}</span>}
+                          </div>
+
+                          <div className="form-group" style={{ marginBottom: '0.5rem' }}>
+                            <label>預計歸還日期 *</label>
+                            <input
+                              type="date"
+                              className="input-field"
+                              min={form.requiredDate || getMinSelectableDate()}
+                              value={form.expectedReturnDate}
+                              onChange={(e) => setForm({ ...form, expectedReturnDate: e.target.value })}
+                              required
+                            />
+                            {errors.expectedReturnDate && <span className="error-text">{errors.expectedReturnDate}</span>}
                           </div>
                         </div>
                       </div>

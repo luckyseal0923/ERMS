@@ -43,6 +43,9 @@ const groupRequests = (reqs) => {
         applicant_emp_id: req.applicant_emp_id,
         applicant_dept: req.applicant_dept,
         applicant_email: req.applicant_email,
+        course_name: req.course_name,
+        target_audience: req.target_audience,
+        expected_return_date: req.expected_return_date,
         created_at: req.created_at,
         required_date: req.required_date,
         status: req.status,
@@ -918,7 +921,15 @@ export default function AdminPanel() {
                         <div style={{ fontWeight: 600 }}>{req.applicant_name}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>工號: {req.applicant_emp_id}</div>
                       </td>
-                      <td>{req.applicant_dept}</td>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{req.applicant_dept}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          課程: {req.course_name || '無'}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          對象: {req.target_audience || '無'}
+                        </div>
+                      </td>
                       <td>
                         <div>{req.applicant_phone}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{req.applicant_email}</div>
@@ -949,7 +960,10 @@ export default function AdminPanel() {
                         })}
                       </td>
                       <td style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                        <strong>{req.required_date}</strong>
+                        <div><strong>借:</strong> {req.required_date}</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                          <strong>還:</strong> {req.expected_return_date || '未定'}
+                        </div>
                       </td>
                       <td style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                         <span className={`kanban-card-badge ${

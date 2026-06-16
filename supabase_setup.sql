@@ -31,6 +31,9 @@ CREATE TABLE borrow_requests (
     applicant_dept TEXT NOT NULL,
     applicant_email TEXT NOT NULL,
     required_date DATE NOT NULL,
+    course_name TEXT NOT NULL,
+    target_audience TEXT NOT NULL,
+    expected_return_date DATE NOT NULL,
     quantity INTEGER NOT NULL DEFAULT 1,
     status TEXT NOT NULL DEFAULT 'pending', -- pending, approved, rejected, returned
     reject_reason TEXT,
